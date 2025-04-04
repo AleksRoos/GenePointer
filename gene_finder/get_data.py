@@ -179,7 +179,9 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
     files = []
     for item in ids_labels:
         files.append(str(item[1])+"_"+str(item[0]) + ".fna")
-    if os.path.exists(GENOME_FOLDER) and (all(x in files for x in os.listdir(GENOME_FOLDER)) and (len(os.listdir(GENOME_FOLDER)) == max_genomes)):
+
+    #(all(x in files for x in os.listdir(GENOME_FOLDER)) and  TEMP REMOVAL FROM BELOW CONDITIONAL
+    if os.path.exists(GENOME_FOLDER) and (len(os.listdir(GENOME_FOLDER)) == max_genomes):
         print("     Directory already exists and includes these genomes. Skipping download step.")
     else:
         print("     Fetching genome sequences:")

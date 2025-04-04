@@ -5,23 +5,32 @@ import os
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
     print("----- Looking for significant kmers -----")
     antibiotic = ""
-    print(data_pheno_path)
-    with open(os.path.abspath(data_pheno_path), "r") as dataphenofile:           #open data.pheno file
+    with open(data_pheno_path, "r") as dataphenofile:           #open data.pheno file
         lines = dataphenofile.readlines()
         if len(lines) < 2:
             print("        No data in file")
             return 0
-        print("DataPheno Header: ", lines[0].strip().split("\t"))
+        #print("DataPheno Header: ", lines[0].strip().split("\t"))
         antibiotic = lines[0].strip().split()[2]           #get antibiotic name from first line of file
 
-    print("         Looking for file ./k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic + ".txt")
-    if not os.path.exists("./k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic + ".txt"):
+    print("         Looking for file ./k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic.capitalize() + ".txt")
+    if not os.path.exists("./k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic.capitalize() + ".txt"):
         print("         EXECUTING: phenotypeseeker modeling " + data_pheno_path + " -w -bc " + classifier+ " -l " + str(kmer_length))             #if the k-mers and coefficients file does not exist, call phenotypeseeker to find significant kmers
+        
+        # try:
+        #     call(["mkdir " + antibiotic], shell=True)           #create a directory for the antibiotic
+        # except FileExistsError:
+        #     print("         Directory already exists")
+        # os.chdir(antibiotic)           #change directory to the antibiotic folder
+        # print("         Changing directory to ", antibiotic)
         call(["phenotypeseeker modeling " + data_pheno_path + " -w -bc " + classifier + " -l " + str(kmer_length)], shell=True)
+        # os.chdir("..")           #change directory back to the original folder
+        print("         Finished executing phenotypeseeker")
+
     else:
         print("         Found")
     try:
-        with open("k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic + ".txt", "r") as kmers_coeffs:      #open k-mers and coefficients file with significant kmers found by phenotypeseeker
+        with open("k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic.capitalize() + ".txt", "r") as kmers_coeffs:      #open k-mers and coefficients file with significant kmers found by phenotypeseeker
             lines = kmers_coeffs.readlines()
             if len(lines) == 0:
                 print("        No significant kmers found")
@@ -49,20 +58,18 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
 def index_reference_genome(reference_genome_path, output_file = "ref_gnome_kmer_locs.txt", kmer_length = 13):
     print("----- Indexing reference genome -----")
     if os.path.exists(output_file):
-        print("        Index file already exists. Stopping indexing")
+        print("         Index file already exists. Stopping indexing")
         return 0
     if not os.path.exists(reference_genome_path):
-        print("        Reference genome file not found")
+        print("         Reference genome file not found")
         return 0
     if not os.path.exists(f"out_{kmer_length}.index"):
-        print("        Index file not found")
-        print("        Indexing reference genome")
+        print("         Index file not found")
+        print("         Indexing reference genome")
         call([f"glistmaker {reference_genome_path} -w {kmer_length} --index"], shell=True)           #index reference genome, locations of each kmer in the ref genome
     
     call([f"glistquery out_{kmer_length}.index --locations >> {output_file}"], shell=True)    #write the index file into a text file for reading later
     print("----- Finished indexing reference genome -----")
-
-
 
 def filter_GFF_file(GFF_file, output_file="filtered_gff.txt"):
     # if os.path.exists(output_file):
@@ -90,8 +97,6 @@ def filter_GFF_file(GFF_file, output_file="filtered_gff.txt"):
             file.write(f"{elements[i]}\t{start_end[i][0]}\t{start_end[i][1]}\t{ids[i]}\n")
     print("----- Finished reducing GFF file -----")
 
-
-
 def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_file: str="pheno_kmers_ref_genome.txt"):
     
     kmers = []
@@ -112,40 +117,56 @@ def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_
     kmers_with_coeffs = zip(kmers, coeffs)
     
     
-    print("     Sorting kmers by coefficients")     # Sort kmers by coefficients, greatest to lowest
+    print("         Sorting kmers by coefficients")     # Sort kmers by coefficients, greatest to lowest
     sorted_kmers = []
     sorted_kmers_with_coeffs = sorted(kmers_with_coeffs, key=lambda x: x[1])
     for line in sorted_kmers_with_coeffs:
         sorted_kmers.append(line[0])
 
-    
-    print("     Finding kmers in indexed file. May take a while...")       # Find kmers in indexed reference genome file
-    shared_kmers = []
-    matching_kmers = []
-    with open(indexed_kmer_file, "r") as file:          #open indexed ref genome
-        lines = file.readlines()
-        for i in range(len(lines)):
-            for kmer in sorted_kmers:                   
-                if kmer in lines[i]:                    #check if a phenotype kmer is in this line of indexed ref genome 
-                    matching_kmers.append(kmer)
-                    index_lines = lines[i:i+int(lines[i].strip().split()[1])+1]         #add all locations of the kmer to the shared kmers list
-                    for line in index_lines:
-                        shared_kmers.append(line)
-                    break
+    if os.path.exists(output_file):
+        print("         Output file already exists. Stopping searching")
+    else:
+        print("     Finding kmers in indexed file. May take a while...")       # Find kmers in indexed reference genome file
+        shared_kmers = []
+        matching_kmers = []
+        with open(indexed_kmer_file, "r") as file:          #open indexed ref genome
+            lines = file.readlines()
+            for i in range(len(lines)):
+                for kmer in sorted_kmers:                   
+                    if kmer in lines[i]:                    #check if a phenotype kmer is in this line of indexed ref genome 
+                        matching_kmers.append(kmer)
+                        index_lines = lines[i:i+int(lines[i].strip().split()[1])+1]         #add all locations of the kmer to the shared kmers list
+                        for line in index_lines:
+                            shared_kmers.append(line)
+                        break
 
 
-    print("     Number of kmers found in indexed file: ", len(matching_kmers))          # Write phenotype associated kmers found in reference genome to file
-    with open(output_file, "w") as file:
-        for line in shared_kmers:
-            file.write(line)
+        print("     Number of kmers found in indexed file: ", len(matching_kmers))          # Write phenotype associated kmers found in reference genome to file
+        with open(output_file, "w") as file:
+            for line in shared_kmers:
+                file.write(line)
     print("----- Finished searching for kmers -----")
 
+def filter_id_line(line):
 
+    items = line.split(";")
+    new_items = []
+    for item in items:
+        if "Parent=" in item:
+            new_items.append(item)
+        if "Name=" in item:
+            new_items.append(item)
+        if "gene" in item:
+            new_items.append(item)
+        if "gene_biotype=" in item:
+            new_items.append(item)
+        if "product=" in item:
+            new_items.append(item)
+        
+    return ";".join(new_items)
 
 def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches = 0,output_file="genes.txt"):
     print("----- Finding genes -----")
-
-    important_lines = []
 
     kmers_with_locations = []
     print("         Extracting kmers and their locations")
@@ -166,21 +187,31 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches
                 kmers_with_locations.append([kmer, *locations])
             else:
                 continue
-    for item in kmers_with_locations:
-        print(item)
+    
+    print("         Number of kmers with locations: ", len(kmers_with_locations))
 
-    print("        Identifying kmer parent elements")
+
+    print("         Identifying kmer parent elements")
+
     genes = []
+    intergenic = []
+    used_kmers = []   
+    kmers_without_locations = []         
+
     with open(filtered_GFF_file, "r") as file:          #open filtered GFF file
         lines = file.readlines()
         
         for kmerline in kmers_with_locations:
             if len(kmerline) == 1:
+                kmers_without_locations.append(kmerline[0])
                 kmers_with_locations.pop(kmers_with_locations.index(kmerline))
                 continue
             else:
-                for line in lines:
-                    line = line.strip().split("\t")
+                for j in range(len(lines)):
+                    line = lines[j].strip().split("\t")
+                    nextLine = ""
+                    if j < len(lines)-1:
+                        nextLine = lines[j+1].strip().split("\t")
                     if line[0] == "region":
                         continue
                 #print(line[:3])
@@ -190,19 +221,39 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches
                             if int(kmerline[i]) >= int(line[1]) and int(kmerline[i]) <= int(line[2]):
                                 #print("line ", line)
                                 add = [kmerline[0], line[0], line[1], kmerline[i], line[2], line[3]]
-                                if add not in genes:
-                                    #need to determine which kmers are already done
-                                    genes.append(add)
-                                else:
-                                    kmers_with_locations.pop(kmers_with_locations.index(kmerline))
-                                
+                                genes.append(add)
+                                used_kmers.append(kmerline[0])
+                            elif nextLine != "" and int(kmerline[i]) >= int(line[2]) and int(kmerline[i]) <= int(nextLine[1]):
+                                intergenic.append([kmerline[0],"intergenic"," ", kmerline[i], nextLine[1]," "])
+                                used_kmers.append(kmerline[0])
 
-    print("ELEMENTS found: ", len(genes))
+   
+
+    for item in kmers_with_locations:
+        if item[0] not in used_kmers:
+            kmers_without_locations.append(item)
+            kmers_with_locations.pop(kmers_with_locations.index(item))
+
+    print("         ELEMENTS found: ", len(genes))
+    print("         INTERGENIC found: ", len(intergenic))
+    print("         UNIDENTIFIED kmers: ", len(kmers_without_locations))
+
 
     with open(output_file, "w") as gene_file:
         i = 1
         for line in genes:
+            line[5] = filter_id_line(line[5])
             gene_file.write(f"\n------------------------------------------ \n{i}\nKMER: {line[0]}\nELEMENT: {line[1]},START: {line[2]}, LOCUS: {line[3]}, END: {line[4]}\nID: {line[5]} \n------------------------------------------\n")
+            i += 1
+    with open("intergenic.txt", "w") as intergenic_file:
+        i = 1
+        for line in intergenic:
+            intergenic_file.write(f"\n------------------------------------------\n{i}\nKMER: {line[0]}\nELEMENT: {line[1]},START: {line[2]}, LOCUS: {line[3]}, END: {line[4]}\nID: {line[5]}  \n------------------------------------------\n")
+            i += 1
+    with open("unidentified_kmers.txt", "w") as unidentified_kmers_file:
+        i = 1
+        for line in kmers_without_locations:
+            unidentified_kmers_file.write(f"\n------------------------------------------\n{i}\nKMER: {line[0]} LOCATIONS: {line[:1]} \n------------------------------------------\n")
             i += 1
 
 
