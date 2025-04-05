@@ -257,11 +257,20 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches
             i += 1
 
 
-# kmerid väljaspool geene ei loeta praegu
+def show_source_genomes(significant_kmers):    
+    #make file with genomes, kmers, locations in genome, larger DNA piece around kmer
+    pass
+
+def combine_kmers_by_locations(significant_kmers):
+    #make file with combined kmers
+    #only combine kmers that are close enough to eachother
+    #fill in gaps with "_"
+    pass
+
+# anda ka genoomid kus sellised kmeerid esinesid täpsemaks analüüsiks
+    #joondada ka nendes genoomides pikemaid DNA juppe kmeeride ümber referents genoomi vastu (valideerimine ja täpsemate mutatsioonide leidmine)
+
 # mis ei seostu millegiga
-
 # kmeeride liitmine
-
 # erki artikklist valideerida
-
 # kmeerid asukoha järgi kokku panna
