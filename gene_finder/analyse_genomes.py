@@ -3,7 +3,7 @@ import os
 
 
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
-    print("----- Looking for significant kmers -----")
+    print("----- Looking for significant kmers -------------- OUTPUT FILE: filtered_kmers_and_coeffs.txt")
     antibiotic = ""
     with open(data_pheno_path, "r") as dataphenofile:           #open data.pheno file
         lines = dataphenofile.readlines()
@@ -53,10 +53,8 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
         return 0
     return 1
 
-
-
 def index_reference_genome(reference_genome_path, output_file = "ref_gnome_kmer_locs.txt", kmer_length = 13):
-    print("----- Indexing reference genome -----")
+    print("----- Indexing reference genome ----------- OUTPUT FILE: ", output_file)
     if os.path.exists(output_file):
         print("         Index file already exists. Stopping indexing")
         return 0
@@ -75,7 +73,7 @@ def filter_GFF_file(GFF_file, output_file="filtered_gff.txt"):
     # if os.path.exists(output_file):
     #     print("        Output file already exists. Stopping filtering")
     #     return 0
-    print("----- Reducing GFF file -----")
+    print("----- Reducing GFF file ------------------ OUTPUT FILE: ", output_file)
     with open(GFF_file, "r") as file:
         lines = file.readlines()
         lines = lines[7:]           #skip the first 7 lines of the GFF file, meta data
@@ -110,7 +108,7 @@ def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_
             coeffs.append(line[1])
 
         
-    print("----- Searching for kmers in ref genome-----")        #Zipping kmers and coefficients together
+    print("----- Searching for kmers in ref genome---------- output file: ", output_file)        #Zipping kmers and coefficients together
     if kmers == []:
         print("        No kmers found")
         return 0   
@@ -166,7 +164,7 @@ def filter_id_line(line):
     return ";".join(new_items)
 
 def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches = 0,output_file="genes.txt"):
-    print("----- Finding genes -----")
+    print("----- Finding genes ------------------ OUTPUT FILE: ", output_file)
 
     kmers_with_locations = []
     print("         Extracting kmers and their locations")
