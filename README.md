@@ -62,10 +62,5 @@ If you already have the genomes make ... WIP
         - information
 - ##### genes.txt, intergenic.txt, unidentified.txt
     - Created after locating all kmers on the reference genome and identifying the genes or intergenic regions they belong to. put into unidentified.txt if not anywhere on reference genome.
-    - Format:\n
-        "------------------------------------------"\n
-        1\n
-        KMER: AAAAAGGCAGGAC\n
-        ELEMENT: gene,START: 2600731, LOCUS: 2601574, END: 2601879\n
-        ID: ID=gene-Rv2328;Name=PE23;gene=PE23;gene_biotype=protein_coding;gene_biotype=protein_coding\n
-        "------------------------------------------"\n
+    - Format:
+    ![alt text](image.png)
