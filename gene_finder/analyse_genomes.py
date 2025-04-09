@@ -3,6 +3,26 @@ import os
 
 
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
+    '''
+        Find kmers associated with the resistance phenotype in input genomed using phenotypeseeker.
+        The kmer length is set to 13 by default. The classifier can be either "log" or "RF".
+        The output file is filtered_kmers_and_coeffs.txt.
+        The function returns 1 if the kmers were found, 0 if not.
+
+        Also creates a ML model for predicting the phenotype in unseen genomes.
+
+        Parameters:
+            data_pheno_path: str - path to the data.pheno file
+            classifier: str - classifier to use, either "log" or "RF"
+            kmer_length: int - length of the kmers to find, default is 13
+        Creates files:
+            - k-mers_and_coefficients_in_<classifier>_model_<antibiotic>.txt
+            - filtered_kmers_and_coeffs.txt
+            - and more which are note used in the following pipeline
+        Returns:
+            int: 1 if the kmers were found, 0 if not
+    '''
+
     print("----- Looking for significant kmers -------------- OUTPUT FILE: filtered_kmers_and_coeffs.txt")
     antibiotic = ""
     with open(data_pheno_path, "r") as dataphenofile:           #open data.pheno file
@@ -54,6 +74,22 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
     return 1
 
 def index_reference_genome(reference_genome_path, output_file = "ref_gnome_kmer_locs.txt", kmer_length = 13):
+    '''
+        Index the reference genome using glistmaker and glistquery.
+        The output file is ref_gnome_kmer_locs.txt.
+        The function returns 0 if the index file already exists, 1 if the indexing was successful.
+        If the reference genome file does not exist, the function returns 0.
+
+        Parameters:
+            reference_genome_path: str - path to the reference genome file
+            output_file: str - path to the output file
+            kmer_length: int - length of the kmers to find, default is 13
+        Creates files:
+            - out_<kmer_length>.index
+            - ref_gnome_kmer_locs.txt
+        Returns:
+            int: 0 if the index file already exists, 1 if the indexing was successful
+    '''
     print("----- Indexing reference genome ----------- OUTPUT FILE: ", output_file)
     if os.path.exists(output_file):
         print("         Index file already exists. Stopping indexing")
@@ -70,6 +106,19 @@ def index_reference_genome(reference_genome_path, output_file = "ref_gnome_kmer_
     print("----- Finished indexing reference genome -----")
 
 def filter_GFF_file(GFF_file, output_file="filtered_gff.txt"):
+    '''
+        Filter the GFF file to only include the elements of interest: element, start position, end position, description.
+        The output file is filtered_gff.txt.
+        The function returns 0 if the output file already exists, 1 if the filtering was successful.
+        If the GFF file does not exist, the function returns 0.
+        Parameters:
+            GFF_file: str - path to the GFF file
+            output_file: str - path to the output file
+        Creates files:
+            - filtered_gff.txt
+        Returns:
+            int: 0 if the output file already exists, 1 if the filtering was successful.
+    '''
     # if os.path.exists(output_file):
     #     print("        Output file already exists. Stopping filtering")
     #     return 0
@@ -96,7 +145,18 @@ def filter_GFF_file(GFF_file, output_file="filtered_gff.txt"):
     print("----- Finished reducing GFF file -----")
 
 def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_file: str="pheno_kmers_ref_genome.txt"):
-    
+    '''
+        Find kmers in the reference genome using the indexed kmer file and the kmers and coefficients file.
+        The output file is pheno_kmers_ref_genome.txt.
+        Parameters:
+            indexed_kmer_file: str - path to the indexed kmer file
+            kmers_coeffs_file: str - path to the kmers and coefficients file
+            output_file: str - path to the output file default: pheno_kmers_ref_genome.txt
+        Creates files:
+            - pheno_kmers_ref_genome.txt
+        Returns:
+            int: 0 if the output file already exists or no kmers were found, 1 if the filtering was successful.
+    '''
     kmers = []
     coeffs = []
 
@@ -123,6 +183,8 @@ def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_
 
     if os.path.exists(output_file):
         print("         Output file already exists. Stopping searching")
+        print("----- Finished searching for kmers -----")
+        return 0
     else:
         print("     Finding kmers in indexed file. May take a while...")       # Find kmers in indexed reference genome file
         shared_kmers = []
@@ -143,10 +205,18 @@ def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, output_
         with open(output_file, "w") as file:
             for line in shared_kmers:
                 file.write(line)
+    return 1
     print("----- Finished searching for kmers -----")
 
 def filter_id_line(line):
-
+    '''
+    Filter the ID line to only include the elements of interest: Parent, Name, gene, gene_biotype, product.
+    The function returns the filtered line.
+    Parameters:
+        line: str - line to be filtered
+    Returns:
+        str: filtered line
+    '''
     items = line.split(";")
     new_items = []
     for item in items:
@@ -164,6 +234,23 @@ def filter_id_line(line):
     return ";".join(new_items)
 
 def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches = 0,output_file="genes.txt"):
+    '''
+    Find genes associated with the kmers in the reference genome.
+    The output files are genes.txt, intergenic.txt and unidentified.txt.
+
+    Parameters:
+        pheno_kmers_in_ref_genome_file: str - path to the pheno kmers in reference genome file
+        filtered_GFF_file: str - path to the filtered GFF file
+        min_mismatches: int - minimum number of mismatches to consider a kmer as significant
+        output_file: str - path to the output file
+    Creates files:
+        - genes.txt
+        - intergenic.txt
+        - unidentified_kmers.txt
+    Returns:
+        int: 1 if the filtering was successful.
+
+    '''
     print("----- Finding genes ------------------ OUTPUT FILE: ", output_file)
 
     kmers_with_locations = []
@@ -253,6 +340,8 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file, min_mismatches
         for line in kmers_without_locations:
             unidentified_kmers_file.write(f"\n------------------------------------------\n{i}\nKMER: {line[0]} LOCATIONS: {line[:1]} \n------------------------------------------\n")
             i += 1
+    print("----- Finished finding genes -----")
+    return 1
 
 
 def show_source_genomes(significant_kmers):    
