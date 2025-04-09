@@ -1,10 +1,10 @@
-### GENEFINDER1
+### GENEFINDER1 (WIP)
 
-##### Pipeline for automated gene identification from statistically significant kmers in bacterial genomes
+#### Pipeline for automated gene identification from statistically significant kmers in bacterial genomes
 
 GeneFinder1 is an extension program for phenotypeseeker written by Erki Aun. GeneFinder1 makes use of the output of phenotypeseeker to identify genes associated with the resistance mechanism analysed and provides the genes in a list for further analysis in research. The program is at its default settings simple to use and provides results in a matter of minutes depending on the input data amounts. 
 
-#### Requirements
+### Requirements
 - python3.8 (https://www.python.org/downloads/release/python-380/)
 - patric-tools (API for downloading from the PATRIC database) (https://github.com/aldro61/patric_tools)
 - phenotypeseeker installed into the same environment (https://github.com/bioinfo-ut/PhenotypeSeeker)
@@ -23,7 +23,13 @@ The module is now in the environment or on your computer globally depending on y
 The module has functions that help in downloading data from PATRIC and functions that help to a analyse the input genomes.
 
 Genomes should be in FASTA/FASTQ format if not downloaded using the included scripts.
-phenotypeseeker needs a
+phenotypeseeker needs a file contains, line by line, each input genome with lines in the tab separated format: SampleID(genefinder takes this as the id of the genome downloaded form PATRIC but it can be anything), Adress(preferably the complete path to the genome), Antibiotic_Name(the binary(1/0) value representing resistance or susceptibility).
+
+testing.py should be run in the folder you wish to have all the output files. the program makes quite a few files so it is suggested to run the script in a folder called NameOfBActeria/NameOfAntibiotic for organisation.
+
+if there is no need for fine tuning how the program looks for the genes one can just replace the name of the bacteria and antibiotic on the corresponding line in testing.py and run the script. The rest is done manually. This downloads the genomes from PATRIC into the same folder and then goes through the analysis pipeline.
+
+If you already have the genomes make ... WIP
 
 #### File name descriptions (in order of creation) ""WIP NAMES""
 - ##### kmers_and_coefficients_in_(classifier)_model_(antibiotic).txt
