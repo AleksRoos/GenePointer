@@ -101,7 +101,7 @@ def make_data_pheno_file(folder, antibiotic, species,DOWNLOAD_DIRECTORY, GENOME_
             elif len(lines) > num_resistant:
                 num_susceptible -= len(lines) - num_resistant
             lines.extend(choose_random_items(data_pheno_lines_susceptible, num_susceptible))
-            file.write(f"SampleID\tAddress\t{antibiotic}\n")
+            file.write(f"SampleID\tAddress\t{antibiotic.capitalize()}\n")
             for line in lines:
                 file.write(line)
     
@@ -122,7 +122,7 @@ def make_data_pheno_file(folder, antibiotic, species,DOWNLOAD_DIRECTORY, GENOME_
 
         print("         Resistant: ", len(data_pheno_lines_resistant))
         print("         Susceptible: ", len(data_pheno_lines_susceptible))
-        file.write(f"SampleID\tAddress\t{antibiotic}\n")
+        file.write(f"SampleID\tAddress\t{antibiotic.capitalize()}\n")
         for line in data_pheno_lines_resistant:
             file.write(line)
         for line in data_pheno_lines_susceptible:
@@ -165,8 +165,16 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
                                                 antibiotic=_antibiotic.lower(),
                                                 drop_intermediate=(not intermediate_phenos), amr_metadata_file=patric_meta_file_path)
 
+    resistant = []
+    susceptible = []
+    #take even amount of resistant and susceptible genomes
     for id, phenotype in zip(genome_ids, labels):
         ids_labels.append((id, phenotype))
+        if phenotype == 1 and len(resistant) < int(max_genomes / 2):
+            resistant.append((id, phenotype))
+        elif phenotype == 0 and len(susceptible) < int(max_genomes / 2):
+            susceptible.append((id, phenotype))
+    even_ids_labels = resistant + susceptible
 
     print("     Available Genomes: {}".format(len(labels)))
     print("         Resistant: {}".format((labels == 1).sum()))
@@ -174,7 +182,7 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
 
     if len(labels) == 0:
         print("     NO GENOMES FOUND")
-        return
+        return 0
     
     files = []
     for item in ids_labels:
@@ -190,7 +198,7 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
             call(["mkdir -p " + GENOME_FOLDER], shell=True)
         print("     Outputting genomes to: ", GENOME_FOLDER)
         print("     DOWNLOADING....")
-        Parallel(n_jobs=num_threads)(delayed(download_genome)(g_id, GENOME_FOLDER) for g_id in ids_labels[0:max_genomes])
+        Parallel(n_jobs=num_threads)(delayed(download_genome)(g_id, GENOME_FOLDER) for g_id in even_ids_labels)
         print("     Done downloading genomes")
 
     print(f"        Making data.pheno file for {_species} {_antibiotic}")
