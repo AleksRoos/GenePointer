@@ -1,6 +1,6 @@
 ### GENEFINDER1 (WIP)
 
-#### Pipeline for automated gene identification from statistically significant kmers in bacterial genomes
+#### Pipeline for automated genetic region pinpointing from statistically significant kmers in bacterial genomes
 
 GeneFinder1 is an extension program for phenotypeseeker, written by Erki Aun. GeneFinder1 makes use of the output of phenotypeseeker to identify genes associated with the resistance mechanism analysed and provides the genes in a list for further application in research. The program, at its default settings, simple to use and provides results in a matter of minutes depending on the input data size. 
 
@@ -22,16 +22,21 @@ The module is now in the environment or on your computer globally depending on w
 #### Usage
 The module has functions that help in downloading data from PATRIC and functions that help to analyse the input genomes.
 
-Genomes should be in FASTA/FASTQ format if not downloaded using the included scripts.
-phenotypeseeker needs a file that contains, line by line, each input genome with lines in tab separated format: SampleID(genefinder takes this as the id of the genome downloaded form PATRIC but it can be anything), Adress(preferably the complete path to the genome), Antibiotic_Name(the binary(1/0) value representing resistance or susceptibility).
+* Data
+Genomes should be in FASTA/FASTQ format if not downloaded using the included script ("download_genomes.py").
+In addition phenotypeseeker needs a file that contains, line by line, each input genome with lines in tab separated format: SampleID(genefinder takes this as the id of the genome downloaded form PATRIC but it can be anything), Address(preferably the complete path to the genome), Antibiotic_Name(the binary(1/0)) value representing resistance or susceptibility).
 
 
-data_collection.py should be run in the folder where the analyses result will end up.
+download_genomes.py should be run in the folder where the analyses results will end up.
 testing.py should be run in the folder you wish to have all the output files. the program makes quite a few files so it is suggested to run the script in a folder called NameOfBActeria/NameOfAntibiotic for organisation.
 
 if there is no need for fine tuning how the program looks for the genes one can just replace the name of the bacteria and antibiotic on the corresponding line in testing.py and run the script. The rest is done manually. This downloads the genomes from PATRIC into the same folder and then goes through the analysis pipeline.
 
 If you already have the genomes make ... WIP
+
+Once you have the genomes downloaded and their corresponding ID,Address,Phenotype table file. Pass the table file's absolute path to the find_genes.py script where the DATAPHENO_PATH is defined and specify the species you are analysing to the SPECIES variable. Upon running the script everything should happen without further input.
+
+The results of analysis will be written to the same folder the script is run in.
 
 #### File name descriptions (in order of creation) ""WIP NAMES""
 - ##### kmers_and_coefficients_in_(classifier)_model_(antibiotic).txt
@@ -44,7 +49,7 @@ If you already have the genomes make ... WIP
         - names of samples containing k-mer
 
 - ##### filtered_kmers_and_coeffs.txt
-    - Contains only k-mers with coefficients more than 0.
+    - Contains only k-mers with coefficients different from 0.
     - Columns:
         - kmer
         - coefficient

@@ -72,7 +72,6 @@ def make_data_pheno_file(folder, antibiotic, species,DOWNLOAD_DIRECTORY, GENOME_
     
     for filename in filenames:
         address = os.path.abspath(os.path.join(DOWNLOAD_DIRECTORY,folder,filename))
-        print(address)
         if filename[0] == "1":
             data_pheno_lines_resistant.append(str(filename[2:-4] + "\t" + address + "\t" + filename[0] + "\n"))
         elif filename[0] == "0":
@@ -94,7 +93,6 @@ def make_data_pheno_file(folder, antibiotic, species,DOWNLOAD_DIRECTORY, GENOME_
     
     def write_pheno_file(filename, num_resistant, num_susceptible):
         with open(os.path.join(dir_name,filename), "w") as file:
-            print("RES" , len(data_pheno_lines_resistant))
             lines = choose_random_items(data_pheno_lines_resistant, num_resistant)
             if len(lines) < num_resistant:
                 num_susceptible += num_resistant - len(lines)
