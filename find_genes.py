@@ -21,13 +21,13 @@ bacteria_and_ref_genome_and_gff = {
 }
 
 SPECIES = "mycobacterium tuberculosis" #Species name
-ANTIBIOTIC = "isoniazid" #Antibiotic name
-DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/MycoTube/Isoniazid/GenomPhenoFiles___mycobacterium_tuberculosis_isoniazid/data_all.pheno"
+ANTIBIOTIC = "moxifloxacin" #Antibiotic name
+DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Moxifloxacin/GenomPhenoFiles___mycobacterium_tuberculosis_moxifloxacin/data_all.pheno"
 #phenotypeseeker
 KMER_LENGTH = 13
 MIN_MISMATCHES = 0
 #RandomForest - RF, logistic - log_reg  (choose from 'log', 'SVM', 'RF', 'NB', 'XGBC', 'DT')
-REGRESSION_MODEL = "log"
+REGRESSION_MODEL = "RF"
 
 
 #Use full paths everywhere
@@ -43,10 +43,7 @@ def main():
     global SPECIES, ANTIBIOTIC, REF_GENOME_PATH, GFF_PATH, DATAPHENO_PATH, KMER_LENGTH, MIN_MISMATCHES,REGRESSION_MODEL
     inp = input("       Are you in the desired directory? Press Enter to continue... n to exit.")
     if inp == "n":
-        exit(0)
-
-
-    
+        exit(0)    
 
     if SPECIES == "":
         print("     no species defined")
@@ -93,11 +90,11 @@ def main():
 
     #-----------------------FIND GENES IN REF GENOME
     #find kmers in common with the reference genome and the significant kmers -> file = pheno_kmers_ref_genome.txt
-    analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "filtered_kmers_and_coeffs.txt" ,output_file="pheno_kmers_ref_genome.txt")
+    analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
     #find genes
-    analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt", output_file="genes.txt", min_mismatches=MIN_MISMATCHES)
+    analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt", output_file="genes.txt")
 
-    #analyse_genomes.show_source_genomes("significant_lines_from_kmer_coeff_file.txt")
+    
 
     ##CLEARING FILES I DONT NEED RIGHT NOW
 

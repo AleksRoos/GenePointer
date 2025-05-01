@@ -13,11 +13,11 @@ Classifier: Operating System :: OS Independent
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 
-### GENEFINDER1 (WIP)
+### GenePointer (WIP)
 
 #### Pipeline for automated genetic region pinpointing from statistically significant kmers in bacterial genomes
 
-GeneFinder1 is an extension program for phenotypeseeker, written by Erki Aun. GeneFinder1 makes use of the output of phenotypeseeker to identify genes associated with the resistance mechanism analysed and provides the genes in a list for further application in research. The program, at its default settings, simple to use and provides results in a matter of minutes depending on the input data size. 
+GenePointer is an extension program for phenotypeseeker, written by Erki Aun. GenePointer makes use of the output of phenotypeseeker to identify genes associated with the resistance mechanism analysed and provides the genes in a list for further application in research. The program, at its default settings, simple to use and provides results in a matter of minutes depending on the input data size. 
 
 ### Requirements
 - python3.8 (https://www.python.org/downloads/release/python-380/)
@@ -26,10 +26,11 @@ GeneFinder1 is an extension program for phenotypeseeker, written by Erki Aun. Ge
     - GenomeTester4 which comes included with the phenotypeseeker install (https://github.com/bioinfo-ut/GenomeTester4)
 - reference genome for the bacteria under investigation (https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=2,2157&reference_only=true)
 - .gff file for the reference genome that has all the genes with annotations (downloadable along with the reference sequences)
+- bowtie or bowtie2
 
 #### Install
 - download folder into desired location
-- cd GeneFinder1
+- cd GenePointer
 - pip install .
 
 The module is now in the environment or on your computer globally depending on whther you installed it in an environment or outside.
@@ -39,13 +40,13 @@ The module has functions that help in downloading data from PATRIC and functions
 
 * Data
 Genomes should be in FASTA/FASTQ format if not downloaded using the included script ("download_genomes.py").
-In addition phenotypeseeker needs a file that contains, line by line, each input genome with lines in tab separated format: SampleID(genefinder takes this as the id of the genome downloaded form PATRIC but it can be anything), Address(preferably the complete path to the genome), Antibiotic_Name(the binary(1/0)) value representing resistance or susceptibility).
+In addition phenotypeseeker needs a file that contains, line by line, each input genome with lines in tab separated format: SampleID(GenePointer takes this as the id of the genome downloaded form PATRIC but it can be anything), Address(preferably the complete path to the genome), Antibiotic_Name(the binary(1/0)) value representing resistance or susceptibility).
 
 
 download_genomes.py should be run in the folder where the analyses results will end up.
 testing.py should be run in the folder you wish to have all the output files. the program makes quite a few files so it is suggested to run the script in a folder called NameOfBActeria/NameOfAntibiotic for organisation.
 
-if there is no need for fine tuning how the program looks for the genes one can just replace the name of the bacteria and antibiotic on the corresponding line in testing.py and run the script. The rest is done manually. This downloads the genomes from PATRIC into the same folder and then goes through the analysis pipeline.
+If there is no need for fine tuning how the program looks for the genes one can just replace the name of the bacteria and antibiotic on the corresponding line in testing.py and run the script. The rest is done manually. This downloads the genomes from PATRIC into the same folder and then goes through the analysis pipeline.
 
 If you already have the genomes make ... WIP
 
