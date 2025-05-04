@@ -203,13 +203,10 @@ def find_ref_genome_kmers(indexed_kmer_file: str,kmers_coeffs_file: str, max_mis
     for line in kmers_coeffs:
         kmer  = line[0]
         kmers_coeffs_revcomp.append((reverse_complement(kmer)))
-    print("         Finding kmers in indexed file. May take a while...")       # Find kmers in indexed reference genome file
     #make dictionary instead
+    print("         Finding kmers in indexed file. May take a while...")       # Find kmers in indexed reference genome file
     shared_kmers = {}
     try:
-        #take
-
-
         with open(indexed_kmer_file, "r") as file:          #open indexed ref genome
             print("         Reading indexed kmer file: ", indexed_kmer_file)
             lines = file.readlines()
