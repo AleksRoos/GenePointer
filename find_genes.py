@@ -2,32 +2,26 @@ from gene_finder import data_collection, analyse_genomes
 from subprocess import call
 import os
 
+basedir = "/home/sass/Dev/PhenotypeSeeker"
 bacteria_and_ref_genome_and_gff = {
-    "mycobacterium tuberculosis": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/MycoTuber/GCA_000195955.2_ASM19595v2_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/MycoTuber/genomic.gff"],
-    "klebsiella pneumoniae": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/KlebsPneum/genomic.gff"],
-    "escherichia coli": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/EColi/GCA_000005845.2_ASM584v2_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/EColi/genomic.gff"],
-    "pseudomonas aeruginosa": ["", ""],
-    "enterococcus faecalis": ["", ""],
-    "enterococcus faecium": ["", ""],
-    "staphylococcus aureus": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/StaphylAureus/GCA_000013425.1_ASM1342v1_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/StaphylAureus/genomic.gff"],
-    "streptococcus pneumoniae": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/StreptoPneum/GCA_001457635.1_NCTC7465_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/StreptoPneum/genomic.gff"],
-    "streptococcus pyogenes": ["", ""],
-    "neisseria gonorrhoeae": ["", ""],
-    "neisseria meningitidis": ["", ""],
-    "haemophilus influenzae": ["", ""],
-    "salmonella enterica": ["/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", "/home/sass/Dev/PhenotypeSeeker/GeneFinder1/RefGenomes/SalmEnter/genomic.gff"],
-    "listeria monocytogenes": ["", ""],
-    "clostridium difficile": ["", ""],
+    "mycobacterium tuberculosis": [basedir + "/GeneFinder1/RefGenomes/MycoTuber/GCA_000195955.2_ASM19595v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/MycoTuber/genomic.gff"],
+    "klebsiella pneumoniae": [basedir + "/GeneFinder1/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/KlebsPneum/genomic.gff"],
+    "escherichia coli": [basedir + "/GeneFinder1/RefGenomes/EColi/GCA_000005845.2_ASM584v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EColi/genomic.gff"],
+    "pseudomonas aeruginosa": [basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/GCA_000006765.1_ASM676v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/genomic.gff"],
+    "enterococcus faecium": [basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/GCA_003071425.1_ASM307142v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/genomic.gff"],
+    "staphylococcus aureus": [basedir + "/GeneFinder1/RefGenomes/StaphylAureus/GCA_000013425.1_ASM1342v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StaphylAureus/genomic.gff"],
+    "streptococcus pneumoniae": [basedir + "/GeneFinder1/RefGenomes/StreptoPneum/GCA_001457635.1_NCTC7465_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StreptoPneum/genomic.gff"],
+    "salmonella enterica": [basedir + "/GeneFinder1/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/SalmEnter/genomic.gff"],
 }
 
-SPECIES = "mycobacterium tuberculosis" #Species name
-ANTIBIOTIC = "moxifloxacin" #Antibiotic name
-DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Moxifloxacin/GenomPhenoFiles___mycobacterium_tuberculosis_moxifloxacin/data_all.pheno"
+SPECIES = "enterococcus faecium" #Species name
+ANTIBIOTIC = "vancomycin" #Antibiotic name
+DATAPHENO_PATH = ""
 #phenotypeseeker
 KMER_LENGTH = 13
 MIN_MISMATCHES = 0
 #RandomForest - RF, logistic - log_reg  (choose from 'log', 'SVM', 'RF', 'NB', 'XGBC', 'DT')
-REGRESSION_MODEL = "RF"
+REGRESSION_MODEL = "log"
 
 
 #Use full paths everywhere

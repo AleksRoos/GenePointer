@@ -62,13 +62,15 @@ def download_genome(g_id, GENOME_FOLDER):
         print("         Error downloading genome: ", g_id[0], e)
 
 
-def make_data_pheno_file(folder, antibiotic, species,DOWNLOAD_DIRECTORY, GENOME_FOLDER):
+def make_data_pheno_file(species, antibiotic, DOWNLOAD_DIRECTORY):
     
+    print(f"        Making data.pheno file for {species} {antibiotic}")
+    folder = (species.replace(" ", "_") + "__" + antibiotic).lower()
     
 
-    print("-------Making data.pheno file for ", folder, "-------")
+    print("-------Making data.pheno file into ", folder, "-------")
     global data_pheno_lines_resistant, data_pheno_lines_susceptible
-    filenames = [f for f in os.listdir(GENOME_FOLDER)]
+    filenames = [f for f in os.listdir(os.path.join(DOWNLOAD_DIRECTORY, folder))]
     
     for filename in filenames:
         address = os.path.abspath(os.path.join(DOWNLOAD_DIRECTORY,folder,filename))
@@ -188,7 +190,12 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
 
     #(all(x in files for x in os.listdir(GENOME_FOLDER)) and  TEMP REMOVAL FROM BELOW CONDITIONAL
     if os.path.exists(GENOME_FOLDER) and (len(os.listdir(GENOME_FOLDER)) == max_genomes):
-        print("     Directory already exists and includes these genomes. Skipping download step.")
+        inp = input("     Directory already exists and includes genomes. Re-Download? -- y/n")
+        if inp == "y":
+            print("     Outputting genomes to: ", GENOME_FOLDER)
+            print("     DOWNLOADING....")
+            Parallel(n_jobs=num_threads)(delayed(download_genome)(g_id, GENOME_FOLDER) for g_id in even_ids_labels)
+            print("     Done downloading genomes")
     else:
         print("     Fetching genome sequences:")
         if not os.path.exists(GENOME_FOLDER):
@@ -199,8 +206,5 @@ def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_A
         Parallel(n_jobs=num_threads)(delayed(download_genome)(g_id, GENOME_FOLDER) for g_id in even_ids_labels)
         print("     Done downloading genomes")
 
-    print(f"        Making data.pheno file for {_species} {_antibiotic}")
-    folder = _species.replace(" ", "_") + "__" + _antibiotic
-    return make_data_pheno_file(folder, _antibiotic, _species, DOWNLOAD_DIRECTORY, GENOME_FOLDER)
-
-#download("Escherichia Coli", "ciprofloxacin", max_genomes=10)
+    
+    return make_data_pheno_file(_species, _antibiotic, DOWNLOAD_DIRECTORY)
