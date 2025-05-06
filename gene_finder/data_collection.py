@@ -63,6 +63,19 @@ def download_genome(g_id, GENOME_FOLDER):
 
 
 def make_data_pheno_file(species, antibiotic, DOWNLOAD_DIRECTORY):
+    '''
+        Makes input file for PhenotypeSeeker in GenePointer out of genomes in specified folder (DOWNLOAD_DIRECTORY). 
+        Useful when you already have genomes downloaded. 
+        !! genome file names must be prefixed with phenotype value (1 for resistant, 0 for susceptible).
+        Example genome file name(resistant genome): 1_genomeID.fna
+
+        Parameters:
+            species: str name of species
+            antibiotic: str name of antibiotic
+            DOWNLOAD_DIRECTORY: path relative path to folder with downloaded genomes (format as specified before) 
+        Returns:
+            dir_name: str directory with data.pheno file/s
+    '''
     
     print(f"        Making data.pheno file for {species} {antibiotic}")
     folder = (species.replace(" ", "_") + "__" + antibiotic).lower()
@@ -153,6 +166,22 @@ def check_for(_species, min_resist=20, min_suscept=20, patric_meta_file_path="/t
 
 #take one species and antibiotic, download data and make data.pheno file for it
 def download(_species, _antibiotic, patric_meta_file_path="/tmp/PATRIC_genomes_AMR.txt" , max_genomes=100, intermediate_phenos=False, num_threads = 4, output_dir="./Genomes/"):
+    '''
+        Downloads genome files from patric, even number of resistant and susceptible, prefixes them with phenotype values and makes data.pheno file for PhenotypeSeeker
+        Only for binary phenotypes currently
+        Parameters:
+            _species: str species name
+            _antibiotic: str antibiotic name
+            patric_meta_file_path: path path to PATRIC_genomes_AMR.txt 
+                (downloadable from ftp://ftp.patricbrc.org/RELEASE_NOTES/PATRIC_genomes_AMR.txt)
+            max_genomes: int max number of genomes to download (includes both phenotypes)
+            intermediate_phenos: bool if intermediate phenotype values should be downloaded (requires additional processing)
+            num_threads: int threads to use when downloading in parallel
+            output_dir: path folder where genome files will be downloaded
+        Returns:
+            0 if no genomes could be downloaded
+            data.pheno folder path if successful
+    '''
 
     _species = _species.lower()
     _antibiotic = _antibiotic.lower()
