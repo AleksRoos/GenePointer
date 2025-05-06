@@ -1,8 +1,8 @@
 from gene_finder import data_collection
 
 
-SPECIES = "enterococcus faecium" #Species to download genomes for
-ANTIBIOTIC = "vancomycin" #Antibiotic to download genomes for
+SPECIES = "pseudomonas aeruginosa" #Species to download genomes for
+ANTIBIOTIC = "ciprofloxacin" #Antibiotic to download genomes for
 
 inp = input("Are you in the desired directory? Press Enter to continue... n to exit.")
 if inp == "n":

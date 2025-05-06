@@ -16,7 +16,7 @@ bacteria_and_ref_genome_and_gff = {
 
 SPECIES = "enterococcus faecium" #Species name
 ANTIBIOTIC = "vancomycin" #Antibiotic name
-DATAPHENO_PATH = ""
+DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/GenomPhenoFiles___enterococcus_faecium_vancomycin/data_all.pheno"
 #phenotypeseeker
 KMER_LENGTH = 13
 MIN_MISMATCHES = 0
@@ -24,10 +24,7 @@ MIN_MISMATCHES = 0
 REGRESSION_MODEL = "log"
 
 
-#Use full paths everywhere
-if bacteria_and_ref_genome_and_gff != {}:
-    REF_GENOME_PATH = bacteria_and_ref_genome_and_gff[SPECIES.lower()][0] #Path to the reference genome
-    GFF_PATH = bacteria_and_ref_genome_and_gff[SPECIES.lower()][1] #Path to the GFF file
+
 
 
 
@@ -40,12 +37,26 @@ def main():
         exit(0)    
 
     if SPECIES == "":
-        print("     no species defined")
+        print("      No species defined!")
+        exit()
+    else:
+        if SPECIES not in list(bacteria_and_ref_genome_and_gff.keys()):
+            print("         Species name not correct or no reference genomes for this species!")
+            exit()
     if ANTIBIOTIC == "":
-        print("     no antibiotic defined")
+        print("      No antibiotic defined!")
+        exit()
     
+
+
+
     SPECIES = SPECIES.lower()
     ANTIBIOTIC = ANTIBIOTIC.lower() 
+
+        #Use full paths everywhere
+    if bacteria_and_ref_genome_and_gff != {}:
+        REF_GENOME_PATH = bacteria_and_ref_genome_and_gff[SPECIES][0] #Path to the reference genome
+        GFF_PATH = bacteria_and_ref_genome_and_gff[SPECIES][1] #Path to the GFF file
 
     if DATAPHENO_PATH == "":
         print("         no ID,Address,Phenotype file path defined")
