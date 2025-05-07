@@ -14,14 +14,14 @@ bacteria_and_ref_genome_and_gff = {
     "salmonella enterica": [basedir + "/GeneFinder1/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/SalmEnter/genomic.gff"],
 }
 
-SPECIES = "enterococcus faecium" #Species name
-ANTIBIOTIC = "vancomycin" #Antibiotic name
-DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/GenomPhenoFiles___enterococcus_faecium_vancomycin/data_all.pheno"
+SPECIES = "mycobacterium tuberculosis" #Species name
+ANTIBIOTIC = "isoniazid" #Antibiotic name
+DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Isoniazid/GenomPhenoFiles___mycobacterium_tuberculosis_isoniazid/data_all.pheno"
 #phenotypeseeker
 KMER_LENGTH = 13
 MIN_MISMATCHES = 0
 #RandomForest - RF, logistic - log_reg  (choose from 'log', 'SVM', 'RF', 'NB', 'XGBC', 'DT')
-REGRESSION_MODEL = "log"
+REGRESSION_MODEL = "RF"
 
 
 
@@ -95,7 +95,11 @@ def main():
 
     #-----------------------FIND GENES IN REF GENOME
     #find kmers in common with the reference genome and the significant kmers -> file = pheno_kmers_ref_genome.txt
-    analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
+
+    if os.path.exists("./pheno_kmers_ref_genome.txt"):
+        inp = input("Do you want to look for kmers in reference index again? n to stop")
+        if inp != "n":
+            analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
     #find genes
     analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt", output_file="genes.txt")
 
