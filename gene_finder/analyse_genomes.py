@@ -385,7 +385,7 @@ def find_in_GFF(dnas_with_locations, filtered_GFF_file):
             lines = file.readlines()
             for k in range(len(dnas_with_locations)):
                 dnaloc = dnas_with_locations[k]
-                if int(dnaloc[1][0]) == 0:
+                if int(dnaloc[0][0]) == 0:
                     genes.append(["None","0","0","0","","",""])
                     intergenic.append(["None","0","0","0"])
                     continue
@@ -397,12 +397,12 @@ def find_in_GFF(dnas_with_locations, filtered_GFF_file):
                     if line[0] == "region":
                         continue
                     else:
-                        for i in range(len(dnaloc[1])):
-                            if int(dnaloc[1][i]) >= int(line[1]) and int(dnaloc[1][i]) <= int(line[2]):
-                                add = [line[0], line[1], dnaloc[1][i], line[2], line[3]]
+                        for i in range(len(dnaloc[0])):
+                            if int(dnaloc[0][i]) >= int(line[1]) and int(dnaloc[0][i]) <= int(line[2]):
+                                add = [line[0], line[1], dnaloc[0][i], line[2], line[3]]
                                 genes.append(add)
-                            elif nextLine != "" and int(dnaloc[1][i]) >= int(line[2]) and int(dnaloc[1][i]) <= int(nextLine[1]):
-                                intergenic.append(["intergenic",int(line[2]), dnaloc[1][i], nextLine[1]])
+                            elif nextLine != "" and int(dnaloc[0][i]) >= int(line[2]) and int(dnaloc[0][i]) <= int(nextLine[1]):
+                                intergenic.append(["intergenic",int(line[2]), dnaloc[0][i], nextLine[1]])
     except FileNotFoundError:
         print("         Filtered GFF file not found")
         return 0
@@ -478,7 +478,7 @@ def align_to_genome(sequence_matrix, genome_file):
                 
                 #only take first match of kmer to genome, other matches are not processed right now
                 sequences = ",".join(sequence_matrix[i][j])
-                result = run(f"bowtie2 -x ref_seq_index -c {sequences}",shell=True, check=True, capture_output=True)
+                result = run(f"bowtie2 --very-sensitive-local -x ref_seq_index -c {sequences}",shell=True, check=True, capture_output=True)
 
                 #result format keeps changing between genomes???
                 results = result.stdout.decode("utf-8").split("\n")
@@ -487,18 +487,22 @@ def align_to_genome(sequence_matrix, genome_file):
                     if row != '':
                         if row[0] not in "@":
                             row = row.split("\t")
-                            result_line.append([row[3], row[9]])
+                            if int(row[3]) != 0:
+                                result_line.append([row[3], row[9]])
+                            else:
+                                result_line.append([0,"-----NoAlignment-----"])
 
                 alignment_results.append(result_line)
                 
-                dnas_locations.append([result_line[0][1], [result_line[0][0]]])
-                print(result_line[0])
+                
+                dnas_locations.append(result_line)
             else:
-                alignment_results.append(["NotPresent"])
-                dnas_locations.append(["NotPresent", [0]])
+                alignment_results.append([[0,"-----NotPresent-----"]])
+                dnas_locations.append([[0], "-----NotPresent-----"])
             sequences_aligned += 1
             print("\r        Sequences aligned: ", sequences_aligned, " / ", len(sequence_matrix)*len(sequence_matrix[i]), end="", flush=True)
         
+        print(dnas_locations)
         genes, intergenic = find_in_GFF(dnas_locations, "filtered_gff.txt")
         # if any(ele != ['None', '0', '0', '0', '', '', ''] for ele in genes):
         #     kmers_found += 1
@@ -706,11 +710,9 @@ def find_genes_alignment(significant_kmers, species, antibiotic, ref_genome_file
         for j in range(len(genes_matrix[i])):
             row1.append(int(genes_matrix[i][j][3]))
             row2.append(str(sequence_matrix[i][j]))
-            if alignment_matrix[i][j][0] != "NotPresent":
-                sequences = "|".join([f"{elem[0]};{elem[1]}" for elem in alignment_matrix[i][j]])
-                row3.append(sequences)
-            else:
-                row3.append("No sequence")
+            print(alignment_matrix[i][j])
+            alignments = "|".join([f"{elem[0]};{elem[1]}" for elem in alignment_matrix[i][j]])
+            row3.append(alignments)
         consensus_matrix.append(row1)
         original_sequence_matrix.append(row2)
         aligned_sequence_matrix.append(row3)
