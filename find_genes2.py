@@ -1,6 +1,7 @@
 from gene_finder import analyse_genomes
 from subprocess import call
 import os
+import time
 
 basedir = "/home/sass/Dev/PhenotypeSeeker"
 bacteria_and_ref_genome_and_gff = {
@@ -16,18 +17,25 @@ bacteria_and_ref_genome_and_gff = {
 
 #Input here
 
-SPECIES = "mycobacterium tuberculosis"
-ANTIBIOTIC = "isoniazid"
-REFSEQ = bacteria_and_ref_genome_and_gff[SPECIES][0]
-GFF = bacteria_and_ref_genome_and_gff[SPECIES][1]
+
+def main():
+
+    SPECIES = "mycobacterium tuberculosis"
+    ANTIBIOTIC = "isoniazid"
+    REFSEQ = bacteria_and_ref_genome_and_gff[SPECIES][0]
+    GFF = bacteria_and_ref_genome_and_gff[SPECIES][1]
+
+    start = time.time()
+    #analyse_genomes.find_kmers_in_genome("GAAAAACTCTTCC", "/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/Genomes/enterococcus_faecium__vancomycin/0_1352.10054.fna")
+    analyse_genomes.find_genes_alignment("significant_lines_from_kmer_coeff_file.txt", SPECIES , ANTIBIOTIC, ref_genome_file = REFSEQ, reduce_kmers_to=30, reduce_genomes_to=50)
+    #analyse_genomes.find_kmers_in_genome("TGGCCGCGCGCAA", "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Moxifloxacin/Genomes/mycobacterium_tuberculosis__moxifloxacin/0_1733.1219.fna")
+    print("Time taken for alignment program: ", round((time.time()-start) / 60, 3), " min")
+
+    # straight = analyse_genomes.straighten_DNA("/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/Genomes/enterococcus_faecium__vancomycin/0_1352.9440.fna")
+
+    # print(analyse_genomes.find_all_indexes(straight, "CGATCAATCCAAA".lower()))
+    # print(analyse_genomes.find_all_indexes(straight, analyse_genomes.reverse_complement("CGATCAATCCAAA").lower()))
 
 
-#analyse_genomes.find_kmers_in_genome("GAAAAACTCTTCC", "/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/Genomes/enterococcus_faecium__vancomycin/0_1352.10054.fna")
-analyse_genomes.find_genes_alignment("significant_lines_from_kmer_coeff_file.txt", SPECIES , ANTIBIOTIC, ref_genome_file = REFSEQ, reduce_genomes_to=10, reduce_kmers_to=30)
-#analyse_genomes.find_kmers_in_genome("TGGCCGCGCGCAA", "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Moxifloxacin/Genomes/mycobacterium_tuberculosis__moxifloxacin/0_1733.1219.fna")
-
-
-# straight = analyse_genomes.straighten_DNA("/home/sass/Dev/PhenotypeSeeker/EnterococcusFaecium/Vancomycin/Genomes/enterococcus_faecium__vancomycin/0_1352.9440.fna")
-
-# print(analyse_genomes.find_all_indexes(straight, "CGATCAATCCAAA".lower()))
-# print(analyse_genomes.find_all_indexes(straight, analyse_genomes.reverse_complement("CGATCAATCCAAA").lower()))
+if __name__ == "__main__":
+    main()

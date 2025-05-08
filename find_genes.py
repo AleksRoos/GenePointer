@@ -1,6 +1,7 @@
 from gene_finder import data_collection, analyse_genomes
 from subprocess import call
 import os
+import time
 
 basedir = "/home/sass/Dev/PhenotypeSeeker"
 bacteria_and_ref_genome_and_gff = {
@@ -31,6 +32,7 @@ REGRESSION_MODEL = "RF"
 
 def main():
     print("------ GeneFinder1 -------")
+    start = time.time()
     global SPECIES, ANTIBIOTIC, REF_GENOME_PATH, GFF_PATH, DATAPHENO_PATH, KMER_LENGTH, MIN_MISMATCHES,REGRESSION_MODEL
     inp = input("       Are you in the desired directory? Press Enter to continue... n to exit.")
     if inp == "n":
@@ -97,11 +99,11 @@ def main():
     #find kmers in common with the reference genome and the significant kmers -> file = pheno_kmers_ref_genome.txt
 
     if os.path.exists("./pheno_kmers_ref_genome.txt"):
-        inp = input("Do you want to look for kmers in reference index again? n to stop")
+        inp = input("           Do you want to look for kmers in reference index again? n to stop")
         if inp != "n":
             analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
     #find genes
-    analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt", output_file="genes.txt")
+    analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt")
 
     
 
@@ -133,7 +135,7 @@ def main():
     #how to automate data.pheno file usage so I dont have to give the path to it.
     #fix the issues with file paths
     #       the paths should be relative to the current working directory but they are absolute for now.
-
+    print("Time taken for alignment program: ", round((time.time()-start) / 60, 3), " min")
 
 if __name__ == "__main__":
     main()
