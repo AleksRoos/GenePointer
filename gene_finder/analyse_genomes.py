@@ -463,9 +463,10 @@ def find_in_GFF(dnas_with_locations, filtered_GFF_file):
 
     return gene_column, intergenic_column
 
-def filter_gene_description(info_from_GFF):
+def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene_biotype", "Name"]):
     attrs = dict(field.split('=') for field in info_from_GFF.strip(';').split(';'))
-    return attrs
+    filtered = {key: attrs[key] for key in desired_columns if key in attrs}
+    return filtered
 
 def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
     '''
@@ -596,12 +597,30 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
     alignments = []
     noalignments = []
     sam_path = "output.sam"
+    new_lines = []
     print("opening SAM file: ", sam_path)
-    samfile = pysam.AlignmentFile(sam_path, "r")
+    with open("output.sam", "r") as sam:
+        lines = sam.readlines()
+        for line in lines:
+            if line[0] == "@":
+                continue
+            line = line.strip().split("\t")
+            new_lines.append(dict({
+                "query_name":line[0].strip(),
+                "is_reverse":line[1].strip() == "16",
+                "reference_name":line[2].strip(),
+                "reference_start":line[3].strip(),
+                "map_quality":line[4].strip(),
+                "cigar":line[5].strip(),
+                "rnext":line[6].strip(),
+                "pnext":line[7].strip(),
+                "template_length":line[8].strip(),
+                "query_sequence":line[9].strip(),
+            }))
 
-    for read in samfile:
+    for read in new_lines:
         # Extract kmer_id and genome_id from query name: query_row_col_count
-        match = re.match(r"query_(.+?)_(.+?)_(\d+)", read.query_name)
+        match = re.match(r"query_(.+?)_(.+?)_(\d+)", read["query_name"])
         if not match:
             continue
         kmer_id, genome_id, _ = match.groups()
@@ -611,39 +630,32 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
             else:
                 continue
 
-        strand = "-" if read.is_reverse else "+"
-        aln_start = read.reference_start  # 0-based leftmost position
-        ref_name = read.reference_name
-        edit_distance = read.get_tag("NM") if read.has_tag("NM") else None
+        strand = "-" if read["is_reverse"] else "+"
+        aln_start = read["reference_start"]  # 0-based leftmost position
+        ref_name = read["reference_name"]
 
-        
-
-        if read.is_unmapped:
+        if read["reference_name"] == "*":
             noalignments.append(
                 {
                     "kmer_id": kmer_id,
                     "genome_id": genome_id,
                     "ref": ref_name,
                     "pos": aln_start,
-                    "seq": read.query_sequence,
-                    "strand": strand,
-                    "edit_distance": edit_distance
+                    "seq": read["query_sequence"],
+                    "strand":strand
                 }
             )
         else:
-            genes = find_in_GFF2(aln_start, str(ref_name), GFF_file)
+            genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
             alignments.append({
                 "kmer_id": kmer_id,
                 "genome_id": genome_id,
                 "ref": ref_name,
                 "pos": aln_start,
-                "seq": read.query_sequence,
-                "strand": strand,
+                "seq": read["query_sequence"],
+                "strand":strand,
                 "genes": genes,
-                "edit_distance": edit_distance
             })
-
-    samfile.close()
     df = pd.DataFrame(alignments)
     df_n = pd.DataFrame(noalignments)
     
@@ -656,7 +668,7 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
 
     return 0 ,0 ,0
 
-def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13):
+def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13, desired_columns = []):
 
     with open(GFF_file, "r") as GFF:
         lines  = GFF.readlines()
@@ -675,7 +687,7 @@ def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length
             start = int(line[3])
             end = int(line[4])
             if int(location)+middle_of_align >= start and int(location)+middle_of_align <= end:
-                add = f"{line[2].strip()}, {chromosome_id}, {start}, {location}, {end}, {filter_gene_description(line[8])}|"
+                add = f"{line[2].strip()}, {chromosome_id}, {start}, {location}, {end}, {filter_gene_description(line[8], desired_columns)}|"
                 genes += add
             elif nextLine != "" and int(location)+middle_of_align >= end and int(location)+middle_of_align <= int(nextLine[3]):
                 genes += f"intergenic, {chromosome_id}, {end}, {location}, {nextLine[3]}|"
