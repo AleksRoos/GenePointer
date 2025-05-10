@@ -573,7 +573,7 @@ def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
 
     return genes_matrix, intergenic_matrix, alignment_matrix
 
-def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file):
+def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
 
     if not os.path.exists("ref_seq_index.1.bt2"):
         run(f"bowtie2-build {ref_genome_file} ref_seq_index", shell=True)
@@ -638,6 +638,7 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
             noalignments.append(
                 {
                     "kmer_id": kmer_id,
+                    "coefficient":kmers_coeffs_genomes_dict[kmer_id],
                     "genome_id": genome_id,
                     "ref": ref_name,
                     "pos": aln_start,
@@ -649,6 +650,7 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
             genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
             alignments.append({
                 "kmer_id": kmer_id,
+                "coefficient":kmers_coeffs_genomes_dict[kmer_id],
                 "genome_id": genome_id,
                 "ref": ref_name,
                 "pos": aln_start,
@@ -872,7 +874,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                 file.write("," + sequences)
 
 
-    genes_matrix, intergenic_matrix, alignment_matrix = align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file)          #align the sequences to the reference genome
+    genes_matrix, intergenic_matrix, alignment_matrix = align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
 
     #print(alignment_matrix[0])
 

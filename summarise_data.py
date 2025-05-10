@@ -1,8 +1,9 @@
 import pandas as pd
+from collections import Counter, defaultdict
+import re
 
-def main():
-
-
+def summaries():
+    
     locations_dataframe = pd.read_csv("locations_matrix.csv", sep=",")
     colheads = locations_dataframe.columns[1:]
     rowheads = locations_dataframe.index
@@ -65,8 +66,58 @@ def main():
             summary_file.write(f"{num_unique_alignments[i]},")
             summary_file.write(f"{'    '.join(unique_alignments[i])},")
             summary_file.write("\n")
-        
+    ###
 
+    return 1
+
+
+def summarise2():
+
+    data_frame = pd.read_csv("alignments.csv", sep=",")
+    col8 = data_frame.iloc[:, 8]
+    col1 = data_frame.iloc[:, 1]
+    col2 = data_frame.iloc[:, 2]
+
+    unique_kmers = set(data_frame.iloc[:,1])
+
+    genes = []
+    for i in range(len(col8)):
+        genes.append(re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i]))
+
+    genes = [item for sublist in genes for item in sublist if item != []]
+    unique_genes = list(set(genes))
+    genes_kmers_dict = defaultdict(list)
+
+    kmers_coeffs = defaultdict(list)
+    total_significance = sum(set(col2))
+    print(total_significance)
+    for i in range(len(col2)):
+        kmers_coeffs[col1[i]] = float(col2[i])
+
+    for i in range(len(col8)):
+        genes = re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i])
+        for gene in genes:
+                genes_kmers_dict[gene].append(col1[i])
+
+    genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
+
+    genes_Ukmers_dict = defaultdict(list)
+    genes_significance = defaultdict(list)
+    for gene in genes_kmers_dict:
+        genes_Ukmers_dict[gene] = len(set(genes_kmers_dict[gene]))
+        for kmer in set(genes_kmers_dict[gene]):
+            genes_significance[gene] += kmers_coeffs[kmer]
+
+    with open("gene_summary.csv", "w") as csv_summary:
+        csv_summary.write(F"Gene({len(unique_genes)}),#Unique k-mers({len(unique_kmers)}), #Total matching alignments\n")
+        for key in genes_kmers_dict:
+            csv_summary.write(f"{key}, {genes_Ukmers_dict[key]}, {len(genes_kmers_dict[key])}\n")
+
+    return 0
+
+def main():
+
+    summarise2()
 
 
 
