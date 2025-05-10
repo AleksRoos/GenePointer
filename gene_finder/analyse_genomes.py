@@ -7,7 +7,7 @@ import random
 import math
 from Bio import SeqIO
 from Bio.Seq import Seq
-import pysam
+#import pysam
 import re
 
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
