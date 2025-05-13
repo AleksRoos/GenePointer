@@ -126,6 +126,7 @@ def make_data_pheno_file(species, antibiotic, DOWNLOAD_DIRECTORY):
         write_pheno_file("data_1000.pheno", 500, 500)
         write_pheno_file("data_350.pheno", 175, 175)
         write_pheno_file("data_200.pheno", 100, 100)
+        write_pheno_file("data_500.pheno", 250, 250)
     if number_of_genomes > 100:
         write_pheno_file("data_100.pheno", 50, 50)
         write_pheno_file("data_30.pheno", 15, 15)
