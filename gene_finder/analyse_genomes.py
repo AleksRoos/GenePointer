@@ -575,24 +575,31 @@ def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
 
 def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
 
+    print("-------------Align To Genomes----------------- OUTPUT: alignments.csv, no_alignments.csv")
+
     if not os.path.exists("ref_seq_index.1.bt2"):
         run(f"bowtie2-build {ref_genome_file} ref_seq_index", shell=True)
 
-    matrix = {}
-    fasta_path = "all_queries.fa"
-    for i in range(len(sequence_matrix)):
-        for j in range(len(sequence_matrix[0])):
-            if sequence_matrix[i][j][0] != "NotPresent":
-                matrix[kmers[j], labelled_genomes[i][2:]] = sequence_matrix[i][j]
+    if not os.path.exists("all_queries.fa"):
+        matrix = {}
+        fasta_path = "all_queries.fa"
+        for i in range(len(sequence_matrix)):
+            for j in range(len(sequence_matrix[0])):
+                if sequence_matrix[i][j][0] != "NotPresent":
+                    matrix[kmers[j], labelled_genomes[i][2:]] = sequence_matrix[i][j]
 
-    with open(fasta_path, "w") as out:
-        count = 0
-        for (row, col), seqs in matrix.items():
-            for seq in seqs:
-                out.write(f">query_{row}_{col}_{count}\n{seq}\n")
-                count += 1
-
-    call([f"bowtie2 --very-sensitive-local -p 8 -x ref_seq_index -f {fasta_path} -S output.sam"], shell=True)
+        with open(fasta_path, "w") as out:
+            count = 0
+            for (row, col), seqs in matrix.items():
+                for seq in seqs:
+                    out.write(f">query_{row}_{col}_{count}\n{seq}\n")
+                    count += 1
+    else:
+        print("         all_queries file exists. Skipping query writing.")
+    if not os.path.exists("output.sam"):
+        call([f"bowtie2 --very-sensitive-local -p 8 -x ref_seq_index -f {fasta_path} -S output.sam"], shell=True)
+    else:
+        print("         SAM file exists!. Skipping alignment")
 
     alignments = []
     noalignments = []

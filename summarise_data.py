@@ -70,6 +70,32 @@ def summaries():
 
     return 1
 
+def summarise():
+
+    kmers2, pvalues = readPvalue("chi2_results_Isoniazid.tsv")
+
+    print(len(pvalues))
+
+    descriptions = []
+    kmers = []
+
+    with open("genes.csv", "r") as genes_file:
+        lines = genes_file.readlines()
+
+        for line in lines:
+            line = line.strip().split(",")
+            kmers.append(line[0].strip())
+            descriptions.append(line[5].strip())
+
+    genes_kmers_dict = defaultdict(list)
+    genes_pvalues_dict = defaultdict(float)
+    for i in range(len(descriptions)):
+        match = re.search(r'Name=([\w.-]+)', descriptions[i])
+        if match:
+            genes_kmers_dict[match.group(1)].append(kmers[i])
+            genes_pvalues_dict[match.group(1)] += float(pvalues[kmers2.index(kmers[i])])
+
+    genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
 
 def summarise2():
 
@@ -86,7 +112,7 @@ def summarise2():
 
     genes = [item for sublist in genes for item in sublist if item != []]
     unique_genes = list(set(genes))
-    genes_kmers_dict = defaultdict(list)
+    
 
     kmers_coeffs = defaultdict(list)
     total_significance = sum(set(col2))
@@ -94,6 +120,8 @@ def summarise2():
     for i in range(len(col2)):
         kmers_coeffs[col1[i]] = float(col2[i])
 
+
+    genes_kmers_dict = defaultdict(list)
     for i in range(len(col8)):
         genes = re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i])
         for gene in genes:
@@ -115,9 +143,27 @@ def summarise2():
 
     return 0
 
+def readPvalue(chi_results):
+    kmers = []
+    pvalues = []
+
+    with open(chi_results, "r") as file:
+        for line in file:
+            parts = line.strip().split('\t')
+            if len(parts) >= 3:
+                kmer = parts[0]
+                pvalue = parts[2]
+                kmers.append(kmer)
+                pvalues.append(pvalue)
+
+    return kmers, pvalues
+
+def make_manhattan():
+    pass
+
 def main():
 
-    summarise2()
+    summarise()
 
 
 
