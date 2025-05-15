@@ -9,7 +9,7 @@ bacteria_and_ref_genome_and_gff = {
     "klebsiella pneumoniae": [basedir + "/GeneFinder1/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/KlebsPneum/genomic.gff"],
     "escherichia coli": [basedir + "/GeneFinder1/RefGenomes/EColi/GCA_000005845.2_ASM584v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EColi/genomic.gff"],
     "pseudomonas aeruginosa": [basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/GCA_000006765.1_ASM676v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/genomic.gff"],
-    "enterococcus faecium": [basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/GCA_003071425.1_ASM307142v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/genomic.gff"],
+    "enterococcus faecium": [basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/GCF_003071425.1_ASM307142v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/genomic.gff"],
     "staphylococcus aureus": [basedir + "/GeneFinder1/RefGenomes/StaphylAureus/GCA_000013425.1_ASM1342v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StaphylAureus/genomic.gff"],
     "streptococcus pneumoniae": [basedir + "/GeneFinder1/RefGenomes/StreptoPneum/GCA_001457635.1_NCTC7465_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StreptoPneum/genomic.gff"],
     "salmonella enterica": [basedir + "/GeneFinder1/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/SalmEnter/genomic.gff"],
@@ -17,12 +17,13 @@ bacteria_and_ref_genome_and_gff = {
 
 SPECIES = "mycobacterium tuberculosis" #Species name
 ANTIBIOTIC = "isoniazid" #Antibiotic name
-DATAPHENO_PATH = "/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Isoniazid/GenomPhenoFiles___mycobacterium_tuberculosis_isoniazid/data_all.pheno"
-#phenotypeseeker
-KMER_LENGTH = 13
-MIN_MISMATCHES = 0
+DATAPHENO_PATH = f"/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Isoniazid/GenomPhenoFiles___{SPECIES.replace(" ", "_")}_{ANTIBIOTIC}/data_all.pheno"
+
+#For PhenotypeSeeker
 #RandomForest - RF, logistic - log_reg  (choose from 'log', 'SVM', 'RF', 'NB', 'XGBC', 'DT')
 REGRESSION_MODEL = "RF"
+KMER_LENGTH = 13
+MIN_MISMATCHES = 0
 
 
 
@@ -135,7 +136,9 @@ def main():
     #how to automate data.pheno file usage so I dont have to give the path to it.
     #fix the issues with file paths
     #       the paths should be relative to the current working directory but they are absolute for now.
-    print("Time taken for alignment program: ", round((time.time()-start) / 60, 3), " min")
+    print("-------------------find genes DONE------------------------\n")
+    print("Time taken for find_genes.py program: ", round((time.time()-start) / 60, 3), " min")
+
 
 if __name__ == "__main__":
     main()

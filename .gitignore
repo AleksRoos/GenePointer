@@ -2,4 +2,6 @@ RefGenomes
 build
 PATRIC*
 *.csv
-
+Analysis
+MyEnv
+.venv

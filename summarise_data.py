@@ -70,13 +70,12 @@ def summaries():
 
     return 1
 
-def summarise():
+def summarise(chi_results):
 
-    kmers2, pvalues = readPvalue("chi2_results_Isoniazid.tsv")
-
-    print(len(pvalues))
+    kmers2, pvalues = readPvalue(chi_results)
 
     descriptions = []
+    locations = []
     kmers = []
 
     with open("genes.csv", "r") as genes_file:
@@ -85,24 +84,54 @@ def summarise():
         for line in lines:
             line = line.strip().split(",")
             kmers.append(line[0].strip())
+            locations.append(int(line[3].strip()))
             descriptions.append(line[5].strip())
+            #genomes.append(line[4].strip())
 
     genes_kmers_dict = defaultdict(list)
     genes_pvalues_dict = defaultdict(float)
+    genes_locations = defaultdict(list)
+    genes_genomes_dict = defaultdict(list)
     for i in range(len(descriptions)):
         match = re.search(r'Name=([\w.-]+)', descriptions[i])
         if match:
             genes_kmers_dict[match.group(1)].append(kmers[i])
             genes_pvalues_dict[match.group(1)] += float(pvalues[kmers2.index(kmers[i])])
+            genes_locations[match.group(1)].append(str(locations[i]))
+            #genes_genomes_dict[match.group(1)].append(str(genomes[i]))
+
+    # genes_Ugenomes_dict = defaultdict(list)
+    # for gene, genomes in genes_genomes_dict.items():
+    #     res = 0
+    #     sus = 0
+    #     total = len(genomes)
+    #     for genome in genomes:
+    #         if genome[0] == "1":
+    #             res += 1
+    #         else:
+    #             sus += 1
+    #     genes_Ugenomes_dict[gene].append([total,res,sus])
+    
+
 
     genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
 
-def summarise2():
+    with open("gene_summary_noalign.csv", "w") as summary:
+        summary.write(f"Genes {len(genes_kmers_dict.keys())}, #Unique k-mers, Unique k-mers + locations + p-values, sum of p-values\n")
+        for gene in genes_kmers_dict:
+            kmers = genes_kmers_dict[gene]
+            summary.write(f"{gene}, {len(genes_kmers_dict[gene])}, ({" ".join(genes_kmers_dict[gene])}),{genes_pvalues_dict[gene]}\n")
+            summary.write(f"-----------,({' '.join(genes_locations[gene])}),-------------\n")
+            summary.write(f"-----------,({" ".join([pvalues[kmers2.index(kmer)] for kmer in kmers if kmer in kmers2])}),----------------\n")
+
+def summarise2(chi_results):
 
     data_frame = pd.read_csv("alignments.csv", sep=",")
     col8 = data_frame.iloc[:, 8]
     col1 = data_frame.iloc[:, 1]
-    col2 = data_frame.iloc[:, 2]
+    col3 = data_frame.iloc[:,3]
+    col5 = data_frame.iloc[:, 5]
+    #col2 = data_frame.iloc[:, 2]
 
     unique_kmers = set(data_frame.iloc[:,1])
 
@@ -112,35 +141,73 @@ def summarise2():
 
     genes = [item for sublist in genes for item in sublist if item != []]
     unique_genes = list(set(genes))
-    
+    chi_kmers, chi_pvalues = readPvalue(chi_results)
 
-    kmers_coeffs = defaultdict(list)
-    total_significance = sum(set(col2))
-    print(total_significance)
-    for i in range(len(col2)):
-        kmers_coeffs[col1[i]] = float(col2[i])
+
+    # kmers_coeffs = defaultdict(list)
+    # total_significance = sum(set(col2))
+    # print(total_significance)
+    # for i in range(len(col2)):
+    #     kmers_coeffs[col1[i]] = float(col2[i])
 
 
     genes_kmers_dict = defaultdict(list)
+    kmers_locations_dict = defaultdict(list)
+    genes_genomes_dict = defaultdict(list)
     for i in range(len(col8)):
         genes = re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i])
         for gene in genes:
                 genes_kmers_dict[gene].append(col1[i])
+                kmers_locations_dict[col1[i]].append(str(col5[i]))
+                genes_genomes_dict[gene].append(col3[i])
 
-    genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
+    genes_locations_dict = defaultdict(list)
+
+    for gene, kmers in genes_kmers_dict.items():
+        kmers = set(kmers)
+        genes_kmers_dict[gene] = kmers
+        genomes = set(genes_genomes_dict[gene])
+        genes_genomes_dict[gene] = genomes
+        for kmer in kmers:
+            genes_locations_dict[gene].append(kmers_locations_dict[kmer][0] if len(set(kmers_locations_dict[kmer])) < 2 else kmers_locations_dict[kmer][0] + "*")
+
+    genes_Ugenomes_dict = defaultdict(list)
+    for gene, genomes in genes_genomes_dict.items():
+        res = 0
+        sus = 0
+        total = len(genomes)
+        for genome in genomes:
+            if genome[0] == "1":
+                res += 1
+            else:
+                sus += 1
+        genes_Ugenomes_dict[gene].append([total,res,sus])
 
     genes_Ukmers_dict = defaultdict(list)
-    genes_significance = defaultdict(list)
     for gene in genes_kmers_dict:
-        genes_Ukmers_dict[gene] = len(set(genes_kmers_dict[gene]))
-        for kmer in set(genes_kmers_dict[gene]):
-            genes_significance[gene] += kmers_coeffs[kmer]
+        genes_Ukmers_dict[gene] = len(genes_kmers_dict[gene])
 
-    with open("gene_summary.csv", "w") as csv_summary:
-        csv_summary.write(F"Gene({len(unique_genes)}),#Unique k-mers({len(unique_kmers)}), #Total matching alignments\n")
+    with open("gene_summary_aligned.csv", "w") as csv_summary:
+        csv_summary.write(F"Gene({len(unique_genes)}), Sum of k-mer p-values, #Unique k-mers({len(unique_kmers)}), #Unique genomes (R/S) , Unique k-mers + locations + pvalues, Unique genomes\n")
+        
+        genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
+
         for key in genes_kmers_dict:
-            csv_summary.write(f"{key}, {genes_Ukmers_dict[key]}, {len(genes_kmers_dict[key])}\n")
-
+            kmers = genes_kmers_dict[key]
+            sum_of_pvalues = sum(
+                float(chi_pvalues[chi_kmers.index(kmer)]) for kmer in kmers if kmer in chi_kmers
+            )
+            csv_summary.write(f"{key}, {sum_of_pvalues}, {genes_Ukmers_dict[key]}, {genes_Ugenomes_dict[key][0][0]}({genes_Ugenomes_dict[key][0][1]}/{genes_Ugenomes_dict[key][0][2]}),({" ".join(genes_kmers_dict[key])}), {" ".join(genes_genomes_dict[key])}\n")
+            csv_summary.write(f"----------,---------------,-------------,-------------,({" ".join(genes_locations_dict[key])}), ----------------------------------------------------------------------------------------------------\n")
+            csv_summary.write(f"----------,---------------,-------------,-------------,({" ".join([chi_pvalues[chi_kmers.index(kmer)] for kmer in kmers if kmer in chi_kmers])})\n")
+    
+    with open("positions_pvalues.csv", "w") as manhattan_data:
+        manhattan_data.write("kmer,position,pval\n")
+        for i in range(1, len(chi_kmers)):
+            if list(set(kmers_locations_dict[chi_kmers[i]])) == []:
+                manhattan_data.write(f"{chi_kmers[i]},-1,{chi_pvalues[i]}\n")
+            else:
+                manhattan_data.write(f"{chi_kmers[i]},{list(set(kmers_locations_dict[chi_kmers[i]]))[0]},{chi_pvalues[i]}\n")
     return 0
 
 def readPvalue(chi_results):
@@ -163,7 +230,8 @@ def make_manhattan():
 
 def main():
 
-    summarise()
+    summarise("chi2_results_Vancomycin_top1000.tsv")
+    summarise2("chi2_results_Vancomycin_top1000.tsv")
 
 
 
