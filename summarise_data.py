@@ -2,6 +2,11 @@ import pandas as pd
 from collections import Counter, defaultdict
 import re
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+
 def summaries():
     
     locations_dataframe = pd.read_csv("locations_matrix.csv", sep=",")
@@ -117,12 +122,12 @@ def summarise(chi_results):
     genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
 
     with open("gene_summary_noalign.csv", "w") as summary:
-        summary.write(f"Genes {len(genes_kmers_dict.keys())}, #Unique k-mers, Unique k-mers + locations + p-values, sum of p-values\n")
+        summary.write(f"Genes {len(genes_kmers_dict.keys())}, sum of p-values, #Unique k-mers, Unique k-mers + locations + p-values\n")
         for gene in genes_kmers_dict:
             kmers = genes_kmers_dict[gene]
-            summary.write(f"{gene}, {len(genes_kmers_dict[gene])}, ({" ".join(genes_kmers_dict[gene])}),{genes_pvalues_dict[gene]}\n")
-            summary.write(f"-----------,({' '.join(genes_locations[gene])}),-------------\n")
-            summary.write(f"-----------,({" ".join([pvalues[kmers2.index(kmer)] for kmer in kmers if kmer in kmers2])}),----------------\n")
+            summary.write(f"{gene}, {genes_pvalues_dict[gene]},{len(genes_kmers_dict[gene])}, ({' '.join(genes_kmers_dict[gene])})\n")
+            summary.write(f"-----------,-------------,--------------,({' '.join(genes_locations[gene])})\n")
+            summary.write(f"-----------,-------------,--------------,({' '.join([pvalues[kmers2.index(kmer)] for kmer in kmers if kmer in kmers2])})\n")
 
 def summarise2(chi_results):
 
@@ -188,18 +193,18 @@ def summarise2(chi_results):
         genes_Ukmers_dict[gene] = len(genes_kmers_dict[gene])
 
     with open("gene_summary_aligned.csv", "w") as csv_summary:
-        csv_summary.write(F"Gene({len(unique_genes)}), Sum of k-mer p-values, #Unique k-mers({len(unique_kmers)}), #Unique genomes (R/S) , Unique k-mers + locations + pvalues, Unique genomes\n")
+        csv_summary.write(F"Gene({len(unique_genes)}), Min of k-mer p-values, #Unique k-mers({len(unique_kmers)}), #Unique genomes (R/S) , Unique k-mers + locations + pvalues, Unique genomes\n")
         
         genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
 
         for key in genes_kmers_dict:
             kmers = genes_kmers_dict[key]
-            sum_of_pvalues = sum(
+            sum_of_pvalues = min(
                 float(chi_pvalues[chi_kmers.index(kmer)]) for kmer in kmers if kmer in chi_kmers
             )
-            csv_summary.write(f"{key}, {sum_of_pvalues}, {genes_Ukmers_dict[key]}, {genes_Ugenomes_dict[key][0][0]}({genes_Ugenomes_dict[key][0][1]}/{genes_Ugenomes_dict[key][0][2]}),({" ".join(genes_kmers_dict[key])}), {" ".join(genes_genomes_dict[key])}\n")
-            csv_summary.write(f"----------,---------------,-------------,-------------,({" ".join(genes_locations_dict[key])}), ----------------------------------------------------------------------------------------------------\n")
-            csv_summary.write(f"----------,---------------,-------------,-------------,({" ".join([chi_pvalues[chi_kmers.index(kmer)] for kmer in kmers if kmer in chi_kmers])})\n")
+            csv_summary.write(f"{key}, {sum_of_pvalues}, {genes_Ukmers_dict[key]}, {genes_Ugenomes_dict[key][0][0]}({genes_Ugenomes_dict[key][0][1]}/{genes_Ugenomes_dict[key][0][2]}),({' '.join(genes_kmers_dict[key])}), {' '.join(genes_genomes_dict[key])}\n")
+            csv_summary.write(f"----------,---------------,-------------,-------------,({' '.join(genes_locations_dict[key])}), ----------------------------------------------------------------------------------------------------\n")
+            csv_summary.write(f"----------,---------------,-------------,-------------,({' '.join([chi_pvalues[chi_kmers.index(kmer)] for kmer in kmers if kmer in chi_kmers])})\n")
     
     with open("positions_pvalues.csv", "w") as manhattan_data:
         manhattan_data.write("kmer,position,pval\n")
@@ -225,15 +230,35 @@ def readPvalue(chi_results):
 
     return kmers, pvalues
 
-def make_manhattan():
-    pass
+def make_manhattan(pos_pval):
+    # Step 1: Load the data
+    df = pd.read_csv(pos_pval)
+    # Step 2: Filter invalid positions
+    df = df[df["position"] != -1]
+
+    # Step 3: Compute -log10(pval)
+    df["neg_log10_p"] = -np.log10(df["pval"])
+
+    # Step 4: Sort by position
+    df = df.sort_values("position")
+
+    # Step 5: Plot
+    plt.figure(figsize=(10, 5))
+    plt.scatter(df["position"], df["neg_log10_p"], c="blue", s=10)
+    plt.title("Manhattan Plot")
+    plt.xlabel("Genomic Position")
+    plt.ylabel("-log10(p-value)")
+    plt.grid(True)
+    plt.xlim(0, 3149213)
+    plt.savefig("manhattan_plot.png")
+    plt.show()
 
 def main():
 
-    summarise("chi2_results_Vancomycin_top1000.tsv")
-    summarise2("chi2_results_Vancomycin_top1000.tsv")
+    summarise("chi2_results_Isoniazid_top1000.tsv")
+    summarise2("chi2_results_Isoniazid_top1000.tsv")
 
-
+    make_manhattan("positions_pvalues.csv")
 
 if __name__ == "__main__":
     main()
