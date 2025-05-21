@@ -1,0 +1,9 @@
+README.md
+setup.py
+GenePointer.egg-info/PKG-INFO
+GenePointer.egg-info/SOURCES.txt
+GenePointer.egg-info/dependency_links.txt
+GenePointer.egg-info/top_level.txt
+gene_pointer/__init__.py
+gene_pointer/analyse_genomes.py
+gene_pointer/data_collection.py

@@ -1,9 +1,0 @@
-README.md
-setup.py
-GeneFinder1.egg-info/PKG-INFO
-GeneFinder1.egg-info/SOURCES.txt
-GeneFinder1.egg-info/dependency_links.txt
-GeneFinder1.egg-info/top_level.txt
-gene_finder/__init__.py
-gene_finder/analyse_genomes.py
-gene_finder/data_collection.py

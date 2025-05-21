@@ -1,17 +1,22 @@
-Metadata-Version: 2.1
-Name: GeneFinder1
+Metadata-Version: 2.4
+Name: GenePointer
 Version: 1.0
 Summary: A pipeline for finding/identifying resistance associated genes in bacterial genomes
-Home-page: UNKNOWN
+Home-page: 
 Author: Aleksander Roosimaa
 Author-email: aleksander.roosimaa@ut.ee
-License: UNKNOWN
-Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: requires-python
+Dynamic: summary
 
 ### GenePointer (WIP)
 
@@ -87,4 +92,3 @@ The results of analysis will be written to the same folder the script is run in.
     - Created after locating all kmers on the reference genome and identifying the genes or intergenic regions they belong to. put into unidentified.txt if not anywhere on reference genome.
     - Format:
     ![alt text](image.png)
-
