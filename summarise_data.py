@@ -4,6 +4,7 @@ import re
 
 import matplotlib.pyplot as plt
 import numpy as np
+from Bio.Seq import Seq
 
 
 
@@ -75,6 +76,38 @@ def summaries():
 
     return 1
 
+def summarise4(chi_results):
+    kmers2, pvalues = readPvalue(chi_results)
+
+    locations = []
+    kmers = []
+    starts =[]
+    ends = []
+    with open("intergenic.csv", "r") as intergenic_file:
+        lines = intergenic_file.readlines()
+        for line in lines:
+            line = line.strip().split(",")
+            kmers.append(line[0].strip())
+            locations.append(str(line[3].strip()))
+            starts.append(str(line[2].strip()))
+            ends.append(str(line[4].strip()))
+        
+    intergenicID_dict = defaultdict(list)
+    for i in range(len(locations)):
+        intergenic_region_name = "inter_" + starts[i] + "..." + ends[i]
+        intergenic_kmer_pvla = pvalues[kmers2.index(kmers[i])]
+        intergenic_kmer_location = locations[i]
+        intergenic_kmer = kmers[i]
+        intergenicID_dict[intergenic_region_name].append([intergenic_kmer, intergenic_kmer_pvla, intergenic_kmer_location])
+    
+    kmer_prevalence_dict = get_kmer_prevalence(kmers, "kmers_genomes_sequences_table.csv")
+
+            #genomes.append(line[4].strip())
+    with open("intergenic_summary.csv", "w") as summary:
+        summary.write(f"inter_Start...End, Signif. k-mer p-value, Signif. k-mer prevalence, K-mer, Location\n")
+        for key,value in intergenicID_dict.items():
+            summary.write(f"{key},{value[0][1]},{"/".join(kmer_prevalence_dict[value[0][0]])},{value[0][1]},{value[0][2]}\n")
+
 def summarise(chi_results):
 
     kmers2, pvalues = readPvalue(chi_results)
@@ -98,83 +131,59 @@ def summarise(chi_results):
     genes_locations = defaultdict(list)
     genes_genomes_dict = defaultdict(list)
     for i in range(len(descriptions)):
-        match = re.search(r'Name=([\w.-]+)', descriptions[i])
+        if descriptions[i].strip().split(",")[0] == "intergenic":
+            match = str("intergenic_" + descriptions[i].strip().split(",")[2].strip())
+        else:
+            match = re.search(r'Name=([\w.-]+)', descriptions[i])
         if match:
             genes_kmers_dict[match.group(1)].append(kmers[i])
             genes_pvalues_dict[match.group(1)] += float(pvalues[kmers2.index(kmers[i])])
             genes_locations[match.group(1)].append(str(locations[i]))
-            #genes_genomes_dict[match.group(1)].append(str(genomes[i]))
-
-    # genes_Ugenomes_dict = defaultdict(list)
-    # for gene, genomes in genes_genomes_dict.items():
-    #     res = 0
-    #     sus = 0
-    #     total = len(genomes)
-    #     for genome in genomes:
-    #         if genome[0] == "1":
-    #             res += 1
-    #         else:
-    #             sus += 1
-    #     genes_Ugenomes_dict[gene].append([total,res,sus])
     
+    kmer_prevalence_dict = get_kmer_prevalence(kmers, "kmers_genomes_sequences_table.csv")
 
 
     genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
 
     with open("gene_summary_noalign.csv", "w") as summary:
-        summary.write(f"Genes {len(genes_kmers_dict.keys())}, sum of p-values, #Unique k-mers, Unique k-mers + locations + p-values\n")
+        summary.write(f"Genes {len(genes_kmers_dict.keys())}, Signif. k-mer p-value, Signif. k-mer prevalence, #Unique k-mers, Unique k-mers, Locations\n")
         for gene in genes_kmers_dict:
             kmers = genes_kmers_dict[gene]
-            summary.write(f"{gene}, {genes_pvalues_dict[gene]},{len(genes_kmers_dict[gene])}, ({' '.join(genes_kmers_dict[gene])})\n")
-            summary.write(f"-----------,-------------,--------------,({' '.join(genes_locations[gene])})\n")
-            summary.write(f"-----------,-------------,--------------,({' '.join([pvalues[kmers2.index(kmer)] for kmer in kmers if kmer in kmers2])})\n")
+            p_values = []
+            for kmer in kmers:
+                p_values.append(pvalues[kmers2.index(kmer)])
+            min_pval_kmer = kmers[p_values.index(min(p_values))]
+            min_pval = min(p_values)
+            summary.write(f"{gene},{min_pval},{"/".join(kmer_prevalence_dict[min_pval_kmer])},{len(genes_kmers_dict[gene])},{' '.join(genes_kmers_dict[gene])},{' '.join(genes_locations[gene])}\n")
 
 def summarise2(chi_results):
 
     data_frame = pd.read_csv("alignments.csv", sep=",")
-    col8 = data_frame.iloc[:, 8]
-    col1 = data_frame.iloc[:, 1]
-    col3 = data_frame.iloc[:,3]
-    col5 = data_frame.iloc[:, 5]
-    #col2 = data_frame.iloc[:, 2]
-
-    unique_kmers = set(data_frame.iloc[:,1])
-
-    genes = []
-    for i in range(len(col8)):
-        genes.append(re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i]))
-
-    genes = [item for sublist in genes for item in sublist if item != []]
-    unique_genes = list(set(genes))
+    descriptions = data_frame.iloc[:, 8]
+    kmer_names = data_frame.iloc[:, 1]
+    genomes = data_frame.iloc[:,3]
+    locations = data_frame.iloc[:, 5]
     chi_kmers, chi_pvalues = readPvalue(chi_results)
-
-
-    # kmers_coeffs = defaultdict(list)
-    # total_significance = sum(set(col2))
-    # print(total_significance)
-    # for i in range(len(col2)):
-    #     kmers_coeffs[col1[i]] = float(col2[i])
-
+    kmer_prevalence_dict = get_kmer_prevalence(kmer_names, "kmers_genomes_sequences_table.csv")
 
     genes_kmers_dict = defaultdict(list)
-    kmers_locations_dict = defaultdict(list)
+    kmers_locations_dict = defaultdict(dict)
     genes_genomes_dict = defaultdict(list)
-    for i in range(len(col8)):
-        genes = re.findall(r"'Name'\s*:\s*'([^']+)'", col8[i])
+    for i in range(len(descriptions)):
+        if descriptions[i].strip().split(",")[0] == "intergenic":
+            genes = [str("inter_" + descriptions[i].strip().split(",")[2].strip() + "..." + descriptions[i].strip().split(",")[4].strip()[:-1])]
+        else:
+            genes = re.findall(r"'Name'\s*:\s*'([^']+)'", descriptions[i])
         for gene in genes:
-                genes_kmers_dict[gene].append(col1[i])
-                kmers_locations_dict[col1[i]].append(str(col5[i]))
-                genes_genomes_dict[gene].append(col3[i])
-
-    genes_locations_dict = defaultdict(list)
+            genes_kmers_dict[gene].append(kmer_names[i])
+            genes_genomes_dict[gene].append(genomes[i])
+            kmers_locations_dict[gene][kmer_names[i]] = locations[i]
 
     for gene, kmers in genes_kmers_dict.items():
         kmers = set(kmers)
         genes_kmers_dict[gene] = kmers
         genomes = set(genes_genomes_dict[gene])
         genes_genomes_dict[gene] = genomes
-        for kmer in kmers:
-            genes_locations_dict[gene].append(kmers_locations_dict[kmer][0] if len(set(kmers_locations_dict[kmer])) < 2 else kmers_locations_dict[kmer][0] + "*")
 
     genes_Ugenomes_dict = defaultdict(list)
     for gene, genomes in genes_genomes_dict.items():
@@ -186,34 +195,76 @@ def summarise2(chi_results):
                 res += 1
             else:
                 sus += 1
-        genes_Ugenomes_dict[gene].append([total,res,sus])
+        genes_Ugenomes_dict[gene].append([str(total),str(res),str(sus)])
 
     genes_Ukmers_dict = defaultdict(list)
     for gene in genes_kmers_dict:
         genes_Ukmers_dict[gene] = len(genes_kmers_dict[gene])
 
     with open("gene_summary_aligned.csv", "w") as csv_summary:
-        csv_summary.write(F"Gene({len(unique_genes)}), Min of k-mer p-values, #Unique k-mers({len(unique_kmers)}), #Unique genomes (R/S) , Unique k-mers + locations + pvalues, Unique genomes\n")
+        csv_summary.write(F"Gene({len(genes_kmers_dict.keys())}), Min of k-mer p-values, Signif. kmer prevalence (T/R/S), #Unique k-mers({len(kmer_prevalence_dict.keys())}), Gene prevalence in genomes (T/R/S) , Unique k-mers, Signif. k-mer location, Unique genomes\n")
         
         genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
-
         for key in genes_kmers_dict:
-            kmers = genes_kmers_dict[key]
-            sum_of_pvalues = min(
-                float(chi_pvalues[chi_kmers.index(kmer)]) for kmer in kmers if kmer in chi_kmers
-            )
-            csv_summary.write(f"{key}, {sum_of_pvalues}, {genes_Ukmers_dict[key]}, {genes_Ugenomes_dict[key][0][0]}({genes_Ugenomes_dict[key][0][1]}/{genes_Ugenomes_dict[key][0][2]}),({' '.join(genes_kmers_dict[key])}), {' '.join(genes_genomes_dict[key])}\n")
-            csv_summary.write(f"----------,---------------,-------------,-------------,({' '.join(genes_locations_dict[key])}), ----------------------------------------------------------------------------------------------------\n")
-            csv_summary.write(f"----------,---------------,-------------,-------------,({' '.join([chi_pvalues[chi_kmers.index(kmer)] for kmer in kmers if kmer in chi_kmers])})\n")
+            kmers = list(genes_kmers_dict[key])
+            p_values = []
+            for kmer in kmers:
+                p_values.append(chi_pvalues[chi_kmers.index(kmer)])
+            min_of_pvalues = min(p_values)
+            min_pval_kmer = kmers[p_values.index(min_of_pvalues)]
+            csv_summary.write(f"{key}, {min_of_pvalues}, {'/'.join(kmer_prevalence_dict[min_pval_kmer])}, {genes_Ukmers_dict[key]}, {'/'.join(genes_Ugenomes_dict[key][0])},{' '.join(genes_kmers_dict[key])},{kmers_locations_dict[key][min_pval_kmer]},{' '.join(genes_genomes_dict[key])}\n")     
     
-    with open("positions_pvalues.csv", "w") as manhattan_data:
-        manhattan_data.write("kmer,position,pval\n")
-        for i in range(1, len(chi_kmers)):
-            if list(set(kmers_locations_dict[chi_kmers[i]])) == []:
-                manhattan_data.write(f"{chi_kmers[i]},-1,{chi_pvalues[i]}\n")
-            else:
-                manhattan_data.write(f"{chi_kmers[i]},{list(set(kmers_locations_dict[chi_kmers[i]]))[0]},{chi_pvalues[i]}\n")
+    # with open("positions_pvalues.csv", "w") as manhattan_data:
+    #     manhattan_data.write("kmer,position,pval\n")
+    #     for i in range(1, len(chi_kmers)):
+    #         if list(set(kmers_locations_dict[chi_kmers[i]])) == []:
+    #             manhattan_data.write(f"{chi_kmers[i]},-1,{chi_pvalues[i]}\n")
+    #         else:
+    #             manhattan_data.write(f"{chi_kmers[i]},{list(set(kmers_locations_dict[chi_kmers[i]]))[0]},{chi_pvalues[i]}\n")
     return 0
+
+def get_kmer_prevalence(kmers, kmers_genomes_sequences):
+    with open(kmers_genomes_sequences, "r") as file:
+        lines = file.readlines()
+        kmer_prev_line = lines[0].strip().split(",")
+        kmer_prevalence_dict = defaultdict(list)
+        for kmer in kmers:
+            kmer = Seq(kmer)
+            reverse_complement = str(kmer.reverse_complement())
+            kmer = str(kmer)
+            for item in kmer_prev_line:
+                if kmer in item or reverse_complement in item:
+                    match = re.search(r'T:(\d+); R:(\d+)/S:(\d+)', item)
+                    if match:
+                        t, r, s = match.groups()
+            kmer_prevalence_dict[kmer] = [str(t),str(r),str(s)]
+    return kmer_prevalence_dict
+ 
+def summarise3(chi_results):
+    data_frame = pd.read_csv("alignments.csv", sep=",")
+    kmers = data_frame.iloc[:, 1]
+    sequences = data_frame.iloc[:, 6]	
+    chi_kmers, chi_pvalues = readPvalue(chi_results)
+    kmers_prevalence = get_kmer_prevalence(kmers, "kmers_genomes_sequences_table.csv")
+
+    kmer_pvals_dict = defaultdict(float)
+    for i in range(len(kmers)):
+        kmer_pvals_dict[kmers[i]] = chi_pvalues[chi_kmers.index(kmers[i])]
+
+
+    with open("unaligned_summary.csv", "w") as summary:
+        summary.write(f"K-mer, P-value, Prevalence, Extended Sequence\n")
+        lines = []
+        for i in range(len(kmers)):
+            kmer = kmers[i]
+            pval = kmer_pvals_dict[kmer]
+            prevalence = kmers_prevalence[kmer]
+            sequence = sequences[i]
+            lines.append(f"{kmer}, {pval}, {"/".join(prevalence)}, {sequence}\n")
+        lines = set(lines)
+        for line in lines:
+            summary.write(line)
+
 
 def readPvalue(chi_results):
     kmers = []
@@ -255,11 +306,17 @@ def make_manhattan(pos_pval):
 
 def main():
 
-    summarise("chi2_results_Isoniazid_top1000.tsv")
-    summarise2("chi2_results_Isoniazid_top1000.tsv")
+    antibiotic = "Ciprofloxacin"
 
-    make_manhattan("positions_pvalues.csv")
+    summarise(f"chi2_results_{antibiotic}_top1000.tsv")
+    summarise2(f"chi2_results_{antibiotic}_top1000.tsv")
+    summarise3(f"chi2_results_{antibiotic}_top1000.tsv")
+    summarise4(f"chi2_results_{antibiotic}_top1000.tsv")
 
+    try:
+        make_manhattan("positions_pvalues.csv")
+    except:
+        print("skipping Manhattan plot generation.")
 if __name__ == "__main__":
     main()
 
