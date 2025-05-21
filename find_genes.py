@@ -1,4 +1,4 @@
-from gene_finder import data_collection, analyse_genomes
+from gene_pointer import data_collection, analyse_genomes
 from subprocess import call
 import os
 import time

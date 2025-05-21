@@ -1,4 +1,4 @@
-from gene_finder import data_collection
+from gene_pointer import data_collection
 
 
 SPECIES = "enterococcus faecium"
