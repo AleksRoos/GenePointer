@@ -7,8 +7,9 @@ import random
 import math
 from Bio import SeqIO
 from Bio.Seq import Seq
-#import pysam
 import re
+
+
 
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
     '''
@@ -74,11 +75,10 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
             kmers = []
             coeffs = []
             whole_lines = []
-            for line in lines[1:]:                  #take only kmers with non-zero coefficients from the file maybe separate kmer present in all phenotypes and in just resistant phenotypes
-                if float(line.split("\t")[1]) != 0:
-                    kmers.append(line.split("\t")[0])
-                    coeffs.append(line.split("\t")[1])
-                    whole_lines.append(line.strip().split("\t"))
+            for line in lines[1:]:                  
+                kmers.append(line.split("\t")[0])
+                coeffs.append(line.split("\t")[1])
+                whole_lines.append(line.strip().split("\t"))
             print("         Number of significant kmers from PhenotypeSeeker: ", len(whole_lines))
 
             whole_lines = sorted(whole_lines, key=lambda x: x[1], reverse=True)
@@ -361,6 +361,8 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file):
     print("         Number of kmers with locations in reference genome (direct map method, alignment based matching will be implemented): ", len(kmers_with_locations))
     print("         Identifying kmer parent elements in reference genome")
 
+    genes: list[list] = []
+    intergenic: list[list] = []
 
     genes, intergenic = find_in_GFF_no_align(kmers_with_locations, filtered_GFF_file)
 
@@ -395,8 +397,8 @@ def find_genes(pheno_kmers_in_ref_genome_file, filtered_GFF_file):
 
 def find_in_GFF_no_align(dnas_with_locations, filtered_GFF_file):
     
-    genes =  []
-    intergenic = []
+    genes: list[list] =  []
+    intergenic: list[list] = []
     try:   
         with open(filtered_GFF_file, "r") as file:          #open filtered GFF file
             lines = file.readlines()
@@ -419,12 +421,18 @@ def find_in_GFF_no_align(dnas_with_locations, filtered_GFF_file):
         return genes, intergenic
     except FileNotFoundError:
         print("         Filtered GFF file not found")
-        return 0,0
+        return [],[]
+
+#USED
+def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene_biotype", "Name"]):
+    attrs = dict(field.split('=') for field in info_from_GFF.strip(';').split(';'))
+    filtered = {key: attrs[key] for key in desired_columns if key in attrs}
+    return filtered
 
 def find_in_GFF(dnas_with_locations, filtered_GFF_file):
     
-    gene_column =  []
-    intergenic_column = []
+    gene_column: list[str] =  []
+    intergenic_column: list[str] = []
     try:   
         with open(filtered_GFF_file, "r") as file:          #open filtered GFF file
             lines = file.readlines()
@@ -456,17 +464,12 @@ def find_in_GFF(dnas_with_locations, filtered_GFF_file):
                 intergenic_column.append(intergenic)
     except FileNotFoundError:
         print("         Filtered GFF file not found")
-        return 0
+        return [],[]
     #[['AAATCGAAAGTCACACCGATTACTACAAAGATTAACGTGACCACATTCAAAAACATTAAAAGATATGCTGATAATCTCATCATTTTTTTAGTTCACTTAC', ['0'], ['None', '0', '0', '0', '', '', ''], ['None', '0', '0', '0', '', '', '']], ['NotFound', [0], ['None', '0', '0', '0', '', '', ''], ['None', '0', '0', '0', '', '', '']], ['NotFound', [0], ['None', '0', '0', '0', '', '', ''], ['None', '0', '0', '0', '', '', '']], ['NotFound', [0], ['None', '0', '0', '0', '', '', ''], ['None', '0', '0', '0', '', '', '']]]
 
     #print(genes)
 
     return gene_column, intergenic_column
-
-def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene_biotype", "Name"]):
-    attrs = dict(field.split('=') for field in info_from_GFF.strip(';').split(';'))
-    filtered = {key: attrs[key] for key in desired_columns if key in attrs}
-    return filtered
 
 def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
     '''
@@ -490,24 +493,6 @@ def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
     if not os.path.exists("ref_seq_index.1.bt2"):
         run(f"bowtie2-build {genome_file} ref_seq_index", shell=True)
     print("         Shape of sequence matrix: ", sequence_matrix.shape)
-
-    # #remove contig separators and take longest remaining segment of DNA
-    # for i in range(len(sequence_matrix)):
-    #     for j in range(len(sequence_matrix[0])):
-    #         if sequence_matrix[i][j] != "NotPresent":
-    #             sequences = []
-    #             for sequence in sequence_matrix[i][j]:
-    #                 try:
-    #                     index = sequence.index("___")
-    #                     if index <= 49:
-    #                         sequence = sequence.split("___")[1]
-    #                     elif index > 49:
-    #                         sequence = sequence.split("___")[0]
-    #                     sequences.append(sequence.replace("_", ""))
-    #                 except:
-    #                     sequences.append(sequence.replace("_", ""))
-    #             sequence_matrix[i][j] = sequences
-
 
     print("         Aligning sequences to ref genome.")
     kmers_found = 0
@@ -573,457 +558,6 @@ def align_to_genome(sequence_matrix, genome_file, kmers, labelled_genomes):
 
     return genes_matrix, intergenic_matrix, alignment_matrix
 
-def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
-
-    print("-------------Align To Genomes----------------- OUTPUT: alignments.csv, no_alignments.csv")
-
-    if not os.path.exists("ref_seq_index.1.bt2"):
-        run(f"bowtie2-build {ref_genome_file} ref_seq_index", shell=True)
-
-    if not os.path.exists("all_queries.fa"):
-        matrix = {}
-        fasta_path = "all_queries.fa"
-        for i in range(len(sequence_matrix)):
-            for j in range(len(sequence_matrix[0])):
-                if sequence_matrix[i][j][0] != "NotPresent":
-                    matrix[kmers[j], labelled_genomes[i][2:]] = sequence_matrix[i][j]
-
-        with open(fasta_path, "w") as out:
-            count = 0
-            for (row, col), seqs in matrix.items():
-                for seq in seqs:
-                    out.write(f">query_{row}_{col}_{count}\n{seq}\n")
-                    count += 1
-    else:
-        print("         all_queries file exists. Skipping query writing.")
-    if not os.path.exists("output.sam"):
-        call([f"bowtie2 --very-sensitive-local -p 8 -x ref_seq_index -f {fasta_path} -S output.sam"], shell=True)
-    else:
-        print("         SAM file exists!. Skipping alignment")
-
-    alignments = []
-    noalignments = []
-    sam_path = "output.sam"
-    new_lines = []
-    print("opening SAM file: ", sam_path)
-    with open("output.sam", "r") as sam:
-        lines = sam.readlines()
-        for line in lines:
-            if line[0] == "@":
-                continue
-            line = line.strip().split("\t")
-            new_lines.append(dict({
-                "query_name":line[0].strip(),
-                "is_reverse":line[1].strip() == "16",
-                "reference_name":line[2].strip(),
-                "reference_start":line[3].strip(),
-                "map_quality":line[4].strip(),
-                "cigar":line[5].strip(),
-                "rnext":line[6].strip(),
-                "pnext":line[7].strip(),
-                "template_length":line[8].strip(),
-                "query_sequence":line[9].strip(),
-            }))
-
-    for read in new_lines:
-        # Extract kmer_id and genome_id from query name: query_row_col_count
-        match = re.match(r"query_(.+?)_(.+?)_(\d+)", read["query_name"])
-        if not match:
-            continue
-        kmer_id, genome_id, _ = match.groups()
-        for labelled_genome in labelled_genomes:
-            if genome_id == labelled_genome[2:]:
-                genome_id = labelled_genome
-            else:
-                continue
-
-        strand = "-" if read["is_reverse"] else "+"
-        aln_start = read["reference_start"]  # 0-based leftmost position
-        ref_name = read["reference_name"]
-
-        if read["reference_name"] == "*":
-            noalignments.append(
-                {
-                    "kmer_id": kmer_id,
-                    "coefficient":kmers_coeffs_genomes_dict[kmer_id],
-                    "genome_id": genome_id,
-                    "ref": ref_name,
-                    "pos": aln_start,
-                    "seq": read["query_sequence"],
-                    "strand":strand
-                }
-            )
-        else:
-            genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
-            alignments.append({
-                "kmer_id": kmer_id,
-                "coefficient":kmers_coeffs_genomes_dict[kmer_id],
-                "genome_id": genome_id,
-                "ref": ref_name,
-                "pos": aln_start,
-                "seq": read["query_sequence"],
-                "strand":strand,
-                "genes": genes,
-            })
-    df = pd.DataFrame(alignments)
-    df_n = pd.DataFrame(noalignments)
-    
-    df.to_csv("alignments.csv")
-    df_n.to_csv("no_alignments.csv")
-
-
-
-
-
-    return 0 ,0 ,0
-
-def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13, desired_columns = []):
-
-    with open(GFF_file, "r") as GFF:
-        lines  = GFF.readlines()
-        genes = ""
-        for j in range(len(lines)):
-            line = lines[j].strip().split("\t")
-            if len(line) < 6:
-                continue
-            if line[2].strip() == "region" or "#" in str(line[0]) or str(line[0]).strip() != chromosome_id:
-                continue
-            
-            nextLine = ""
-            if j+1 < len(lines)-1 and "#" not in lines[j+1][0]:
-                nextLine = lines[j+1].strip().split("\t")
-            middle_of_align = padding + round(kmer_length/2)
-            start = int(line[3])
-            end = int(line[4])
-            if int(location)+middle_of_align >= start and int(location)+middle_of_align <= end:
-                add = f"{line[2].strip()}, {chromosome_id}, {start}, {location}, {end}, {filter_gene_description(line[8], desired_columns)}|"
-                genes += add
-            elif nextLine != "" and int(location)+middle_of_align >= end and int(location)+middle_of_align <= int(nextLine[3]):
-                genes += f"intergenic, {chromosome_id}, {end}, {location}, {nextLine[3]}|"
-
-        if genes == "":
-            genes = "NoGenesInRef"
-        return genes
-
-
-def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_genome_file = "Not added", reduce_genomes_to:int = 0, reduce_kmers_to:int = 0):
-    '''
-    Find genes associated with the kmers in the reference genome.
-    The output files are genes.csv, intergenic.csv and Kmer_genome_loc_sequence.txt.
-    The function returns 1 if the finding was successful.
-    Parameters:
-        significant_kmers: str - path to the significant kmers file
-        species: str - name of the species
-        antibiotic: str - name of the antibiotic
-        ref_genome_file: str - path to the reference genome file
-    Creates files:
-        - genes.csv
-        - intergenic.csv
-        - Kmer_genome_loc_sequence.txt
-    Returns:
-        int: 1 if the finding was successful.
-    '''
-
-    #make file with genomes, kmers, locations in genome, larger DNA piece around kmer
-
-    print("-------- Finding genes in genomes ----------- OUTPUT FILE: genes.csv, intergenic.csv, Kmer_genome_loc_sequence.txt")
-
-
-    species = species.lower()
-    antibiotic = antibiotic.lower()
-    genome_folder = species.replace(' ', '_') + "__" + antibiotic
-
-
-    data_frame = []
-    kmers_coeffs_genomes_dict = {}
-    kmers_genomes_dict = {}
-    #read significant kmers from file with their original genomes and coefficients
-    #       determine proportion of resistant and susceptible genomes
-
-    genomes = ""
-    print("         Processing significant k-mer file: ", significant_kmers)
-    with open(significant_kmers, "r") as file:
-        lines = file.readlines()
-        for line in lines:
-            line = line.strip().split("\t")
-            data_frame.append([line[0].strip(), float(line[1].strip()), line[2].strip(), line[3].strip()])
-            genomes += " " + line[3].strip()
-            
-            
-        genomes = genomes.strip().split(" ")
-        genomes = sorted(set(genomes), key=lambda x: int(x.split(".")[1]))
-    data_frame = sorted(data_frame, key=lambda x: x[1], reverse=True)          #sort data frame by kmer
-    print(f"            K-mers sorted for coefficients:  {len(data_frame)}")
-    for line in data_frame:
-        kmers_coeffs_genomes_dict[line[0]] = [line[1], line[2]]
-        kmers_genomes_dict[line[0]] = line[3].strip().split(" ")
-    
-    labelled_genomes = []
-    genome_folder_genome_names = os.listdir(f"Genomes/" + genome_folder)
-    for genome in genomes:
-        for genome_file in genome_folder_genome_names:
-            if genome in genome_file:
-                labelled_genomes.append(genome_file[:-4])
-                break
-    labelled_genomes = sorted(labelled_genomes, key = lambda x: x[0])
-    print("             Unique genomes across all kmers: ", len(labelled_genomes))
-    print("             Resistant genomes: ", len([elem for elem in labelled_genomes if elem[0] == "1"]))
-    #K-mers with higher coefficients are first
-    
-    #print(labelled_genomes)
-    print("         Writing k-mers and source genomes to file: kmers_genomes.txt")
-    with open("kmers_genomes.txt", "w") as file:
-        for kmer in kmers_genomes_dict:
-            file.write(f"{kmer}\t{kmers_genomes_dict[kmer]}\n")
-    
-    kmers = list(kmers_genomes_dict.keys())
-    kmer_count_res_sus_dict = {}
-    print("         Making kmer, genome count, resistant, susceptible dictionary")
-    for i in range(len(kmers)):
-        genome_count = 0
-        resistant_count = 0
-        susceptible_count = 0
-        for j in range(len(labelled_genomes)):
-            if labelled_genomes[j][2:] in kmers_genomes_dict[kmers[i]]:
-                genome_count += 1
-                if int(labelled_genomes[j][0]) == 1:
-                    resistant_count += 1
-                else:
-                    susceptible_count += 1
-        kmer_count_res_sus_dict[kmers[i]] = f"T:{genome_count}; R:{resistant_count}/S:{susceptible_count}({round(resistant_count / genome_count*100, 2)}%)"
-    longer_sequences = []
-    sequence_matrix = []
-
-    # inp = input("Extend k-mers from their original genomes again? n to skip")
-
-    # if os.path.exists("./kmers_genomes_sequences_table.csv") and inp == "n":
-    #     with open("./kmers_genomes_sequences_table.csv", "r") as file:
-    #         lines = file.readlines()
-    #         col_names = lines[0]
-    #         lines = lines[2:]
-    #         for line in lines:
-    #             sequence_row = []
-    #             for item in line.strip().split(",")[1:]:
-    #                 #print(item)
-    #                 try:
-    #                     sequence_row.append(item.split(";"))
-    #                 except:
-    #                     sequence_row.append([item])
-    #         sequence_matrix.append(sequence_row)
-    #     sequence_matrix = np.array(sequence_matrix)
-    # else:
-    #take subset of data
-    if reduce_genomes_to != 0 and reduce_genomes_to < len(labelled_genomes):
-        labelled_genomes = labelled_genomes[:math.floor(reduce_genomes_to/2)] + labelled_genomes[-math.ceil(reduce_genomes_to/2):]
-    if reduce_kmers_to != 0 and reduce_kmers_to < len(kmers_genomes_dict.keys()):
-        kmers = list(kmers_genomes_dict.keys())[:reduce_kmers_to]
-    print(f"         Expanding {len(kmers)} k-mers from their original {len(labelled_genomes)} genomes. {len(labelled_genomes) * len(kmers)}")
-    
-
-    #make sequence_matrix
-    kmer_count = 0
-    times = []
-    kmers_left = len(kmers)
-    for i in range(len(kmers)):
-        columns = []
-        start = time.time()
-        for j in range(len(labelled_genomes)):
-            if labelled_genomes[j][2:] in kmers_genomes_dict[kmers[i]]:
-                genome_file = "Genomes/" + genome_folder + "/" + labelled_genomes[j] + ".fna"
-                #print("Genome file: ", genome_file)
-                longer_sequences = extract_kmer_with_flanks(kmers[i], genome_file)
-                columns.append(longer_sequences)
-            else:
-                columns.append(["NotPresent"])
-        kmer_count += 1
-        kmers_left -= 1
-        duration = time.time() - start
-        times.append(duration)
-        print(f"\r         K-mers expanded:  {kmer_count} / {len(kmers)}\tTime per kmer:  {round(np.median(np.array(times)), 2)} s\tEstimated time: {round(kmers_left*np.median(times)/60,2)} min", end="", flush=True)
-        sequence_matrix.append(columns)
-    
-    print("\n")    
-    
-    sequence_matrix = np.transpose(np.array(sequence_matrix))
-    sequences = ""
-
-    ref_genome_row = []
-    ref_genome_row_string = ""
-
-    #open resulting table file for writing
-    with open("kmers_genomes_sequences_table.csv", "w") as file:
-        file.write("Table")
-        for i in range(len(kmers)):
-            #add first row with kmers and their parameters in genomes.
-            file.write(f", {kmers[i]} Counts(g; R; S): {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {round(kmers_coeffs_genomes_dict[kmers[i]][0],7)}")
-            #make row for ref genome separately
-            ref_genome_row.append(extract_kmer_with_flanks(kmers[i], ref_genome_file))
-
-        # print(ref_genome_row)
-
-        # #format ref genome row and write to file
-        # for sequence_set in ref_genome_row:
-        #     if len(sequence_set) < 2:
-        #         ref_genome_row_string += "," + str(sequence_set).replace("[", "").replace("]", "").replace("'", "")
-        #     else:
-        #         ref_genome_row_string += "," + str(sequence_set).replace("[", "").replace("]", "").replace("'", "").replace(",", ";")
-        # file.write("\nREFERENCE " + ref_genome_row_string)
-        
-        #format genome rows and write to file
-        shape = sequence_matrix.shape
-        for i in range(shape[0]):
-            file.write("\n" + labelled_genomes[i])
-            for j in range(shape[1]):
-            
-                sequences = str(sequence_matrix[i][j]).replace("[", "").replace("]", "").replace("'", "")
-                if len(sequence_matrix[i][j]) > 1:
-                    sequences = str(sequence_matrix[i][j]).replace("[", "").replace("]", "").replace("'", "").replace(",", ";")
-                file.write("," + sequences)
-
-
-    genes_matrix, intergenic_matrix, alignment_matrix = align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
-
-    #print(alignment_matrix[0])
-
-    #GENE_MATRIX[0]
-    #[['TATTCGTTCAATGATCCGAGGGAAACTTGGGGATTGGATCTTAAGTATTTTGGAAAACAAATATGACTTAAATCACCTGGACGCGATGAAATTATATCAA', 'gene', '8671', '10231', '10377', 'ID=gene-PA0007;Name=PA0007;gbkey=Gene;gene_biotype=protein_coding;locus_tag=PA0007'], 
-    # ['TATTCGTTCAATGATCCGAGGGAAACTTGGGGATTGGATCTTAAGTATTTTGGAAAACAAATATGACTTAAATCACCTGGACGCGATGAAATTATATCAA', 'CDS', '8671', '10231', '10377', 'ID=cds-AAG03397.1;Parent=gene-PA0007;Dbxref=NCBI_GP:AAG03397.1;Name=AAG03397.1;Note=Product name confidence: Class 4 (Homologs of previously reported genes of unknown function%2C or no similarity to any previously reported sequences);gbkey=CDS;locus_tag=PA0007;product=hypothetical protein;protein_id=AAG03397.1;transl_table=11']]
-
-
-    #ALIGNMENT_MATRIX[0]
-    #[['0', 'GATTCTACCTTCTAAACACGTAATAAAGTATCTAAAAAAATTAAAAGAGAAAACATTAAAAGAACAATTTTTAA', 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII'], 
-    # ['10231', 'TATTCGTTCAATGATCCGAGGGAAACTTGGGGATTGGATCTTAAGTATTTTGGAAAACAAATATGACTTAAATCACCTGGACGCG', 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII']
-
-    # locations_matrix = []
-    # original_sequence_matrix = []
-    # aligned_sequence_matrix = []
-
-    # with open("gene_matrix.csv", "w") as file:
-    #     # sequence_matrix = np.transpose(sequence_matrix)
-    #     # for col in sequence_matrix:
-    #     #     col_header = str(set(col)).replace(",", ";")
-    #     #     file.write(f"{col_header},")
-    #     # file.write("\n")
-    #     file.write("GENES")
-    #     for i in range(len(kmers)):
-    #         #add first row with kmers and their parameters in genomes.
-    #         file.write(f", {kmers[i]}/{reverse_complement(kmers[i])} {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {kmers_coeffs_genomes_dict[kmers[i]][0]}")
-    #     file.write("\n")
-    #     for i in range(len(genes_matrix)):
-    #         file.write(f"{labelled_genomes[i]},")
-    #         for j in range(len(genes_matrix[i])):
-    #             if len(genes_matrix[i][j]) > 1:
-    #                 if genes_matrix[i][j] != '':
-    #                     string = genes_matrix[i][j].replace(",", " ")
-    #                     file.write(f"({string}),")
-    #                 else:
-    #                     file.write("---------,")
-    #         file.write("\n")
-
-    # for i in range(len(genes_matrix)):
-    #     row1 = []
-    #     row2 = []
-    #     row3 = []
-    #     for j in range(len(genes_matrix[i])):
-    #         if genes_matrix[i][j] != "NoGenes":
-    #             genes = genes_matrix[i][j].split("|")
-    #             locations = ""
-    #             if len(genes) > 2:
-    #                 for gene in genes:
-    #                     if gene != '':
-    #                         locations += gene.split(",")[2] + "|"
-    #             else:
-    #                 locations = genes[0].split(",")[2]
-    #             row1.append(locations)
-    #         else:
-    #             row1.append("NoGenes")
-    #         row2.append(str(sequence_matrix[i][j]))
-    #         alignments = "|".join([f"{elem[0]};{elem[1]}" for elem in alignment_matrix[i][j]])
-    #         row3.append(alignments)
-    #     locations_matrix.append(row1)
-    #     original_sequence_matrix.append(row2)
-    #     aligned_sequence_matrix.append(row3)
-
-    # with open("alignment_matrix.csv", "w") as file:
-    #     # sequence_matrix = np.transpose(sequence_matrix)
-    #     # for col in sequence_matrix:
-    #     #     col_header = str(np.unique(col)).replace(",",";")
-    #     #     file.write(f"{col_header},")
-    #     # file.write("\n")
-    #     file.write("ALIGNMENTS")
-    #     for i in range(len(kmers)):
-    #         #add first row with kmers and their parameters in genomes.
-    #         file.write(f", {kmers[i]}/{reverse_complement(kmers[i])} {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {kmers_coeffs_genomes_dict[kmers[i]][0]}")
-    #     file.write("\n")
-    #     for i in range(len(aligned_sequence_matrix)):
-    #         file.write(f"{labelled_genomes[i]},")
-    #         for j in range(len(aligned_sequence_matrix[i])):
-    #             file.write(f"{aligned_sequence_matrix[i][j]},")
-    #         file.write("\n")
-    # # with open("expanded_sequence_matrix.csv", "w") as file:
-    # #     # sequence_matrix = np.transpose(sequence_matrix)
-    # #     # for col in sequence_matrix:
-    # #     #     col_header = str(set(col)).replace(",", ";")
-    # #     #     file.write(f"{col_header},")
-    # #     # file.write("\n")
-    # #     file.write("EXPANDED,")
-    # #     for kmer in kmers:
-    # #         file.write(f"{kmer},")
-    # #     file.write("\n")
-    # #     for i in range(len(original_sequence_matrix)):
-    # #         file.write(f"{labelled_genomes[i]},")
-    # #         for j in range(len(original_sequence_matrix[i])):
-    # #             sequences = str(original_sequence_matrix[i][j]).replace(",", ";")
-    # #             file.write(f"{sequences},")
-    # #         file.write("\n")
-   
-    # with open("intergenic_matrix.csv", "w") as file:
-    #     # sequence_matrix = np.transpose(sequence_matrix)
-    #     # for col in sequence_matrix:
-    #     #     col_header = str(set(col)).replace(",", ";")
-    #     #     file.write(f"{col_header},")
-    #     # file.write("\n")
-    #     file.write("INTERGENIC")
-    #     for i in range(len(kmers)):
-    #         #add first row with kmers and their parameters in genomes.
-    #         file.write(f", {kmers[i]}/{reverse_complement(kmers[i])} {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {kmers_coeffs_genomes_dict[kmers[i]][0]}")
-    #     file.write("\n")
-    #     for i in range(len(intergenic_matrix)):
-    #         file.write(f"{labelled_genomes[i]},")
-    #         for j in range(len(intergenic_matrix[i])):
-    #             if len(intergenic_matrix[i][j]) > 1:
-    #                 if intergenic_matrix[i][j][0] != "None":
-    #                     file.write(f"{intergenic_matrix[i][j][0]};{intergenic_matrix[i][j][1]};{intergenic_matrix[i][j][2]},")
-    #                 else:
-    #                     file.write("-----------,")
-    #         file.write("\n")
-    # with open("locations_matrix.csv", "w") as file:
-    #     # sequence_matrix = np.transpose(sequence_matrix)
-    #     # for col in sequence_matrix:
-    #     #     col_header = str(set(col)).replace(",", ";")
-    #     #     file.write(f"{col_header},")
-    #     # file.write("\n")
-    #     file.write("LOCATIONS")
-    #     for i in range(len(kmers)):
-    #         #add first row with kmers and their parameters in genomes.
-    #         file.write(f", {kmers[i]}/{reverse_complement(kmers[i])} {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {kmers_coeffs_genomes_dict[kmers[i]][0]}")
-    #     file.write("\n")
-    #     for i in range(len(locations_matrix)):
-    #         file.write(f"{labelled_genomes[i]},")
-    #         for j in range(len(locations_matrix[i])):
-    #             if locations_matrix[i][j]:
-    #                 file.write(f"{locations_matrix[i][j]},")
-    #             else:
-    #                 file.write(f"--------,")
-    #         file.write("\n")
-
-    
-
-    #make readable excel file. rows as genomes, columns as kmers, sequences as values
-    #add kmer coefficients to the file
-
-import re
-
 def find_all_indexes(text, substring):
     # Use re.finditer to find all matches of the substring
     return [match.start() for match in re.finditer(re.escape(substring), text)]
@@ -1046,94 +580,6 @@ def reverse_complement(dna_sequence):
     # Generate the reverse complement
     reverse_comp = ''.join(complement[base] for base in reversed(dna_sequence.upper()))
     return reverse_comp
-
-#UNUSED, TOO SLOW
-def straighten_DNA(genome):
-    straight_dna = ""
-    with open(genome, "r") as file:
-        lines = file.readlines()
-        for line in lines:
-            if line[0]  == ">":
-                straight_dna += "___"
-            else:
-                straight_dna += line.strip()
-    with open("new_genome.txt", "w") as file:
-        file.write(straight_dna)
-    return straight_dna
-
-def extract_kmer_with_flanks(kmer,fasta_file, add_length: int = 50):
-    kmer = kmer.lower()
-    rev_kmer = str(Seq(kmer).reverse_complement())
-    k = len(kmer)
-    results = []
-
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        seq = str(record.seq)
-        seq_len = len(seq)
-
-        for target in [kmer, rev_kmer]:
-            i = 0
-            while True:
-                i = seq.find(target, i)
-                if i == -1:
-                    break
-
-                start = max(0, i - add_length)
-                end = min(seq_len, i + k + add_length)
-
-                left = seq[start:i]
-                middle = seq[i:i + k].upper()
-                right = seq[i + k:end]
-
-                region = left + middle + right
-                results.append(region)
-
-                i += 1  # move forward to allow overlapping matches
-
-    return results
-#UNUSED, TOO SLOW
-def find_kmers_in_genome(kmer, genome, add_length: int = 50):
-    '''
-    Find kmers in the genome using the indexed kmer file and the kmers and coefficients file.
-    The output file is pheno_kmers_ref_genome.txt.
-    Parameters:
-        indexed_kmer_file: str - path to the indexed kmer file
-        kmers_coeffs_file: str - path to the kmers and coefficients file
-        output_file: str - path to the output file default: pheno_kmers_ref_genome.txt
-    Creates files:
-        - pheno_kmers_ref_genome.txt
-    Returns:
-        int: 0 if the output file already exists or no kmers were found, 1 if the filtering was successful.
-    '''
-    
-    straight_dna = straighten_DNA(genome)
-    
-    locations = []
-    indexes = find_all_indexes(straight_dna, kmer.lower())
-    #print(indexes)
-    for index in indexes:
-        locations.append(index)
-    
-    indexes = find_all_indexes(straight_dna, reverse_complement(kmer).lower())
-    for index in indexes:
-        locations.append(index)
-    #print(find_all_indexes(straight_dna, (kmer.lower())[::-1]))
-    longer_sequences = []
-    for location in locations:
-        #print("Location: ", location)
-        if location != []:
-            if location > add_length:
-                if location < len(straight_dna) - len(kmer) - add_length:
-                    longer_sequences.append(straight_dna[location-add_length:location]+str(straight_dna[location:location+len(kmer)]).upper()+straight_dna[location+len(kmer):location+add_length])
-                else:
-                    longer_sequences.append(straight_dna[location-add_length:location+len(kmer)])
-            else:
-                longer_sequences.append(straight_dna[location:location+len(kmer)+add_length])
-    if longer_sequences == []:
-        #print("No longer sequences found")
-        longer_sequences.append(genome)
-    
-    return longer_sequences
 
 def combine_kmers_by_locations(significant_kmers):
     #make file with combined kmers

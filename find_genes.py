@@ -3,16 +3,17 @@ from subprocess import call
 import os
 import time
 
-basedir = "/home/sass/Dev/PhenotypeSeeker"
+GENEPOINTER_DIR = "/home/sass/Dev/PhenotypeSeeker"
+
 bacteria_and_ref_genome_and_gff = {
-    "mycobacterium tuberculosis": [basedir + "/GeneFinder1/RefGenomes/MycoTuber/GCA_000195955.2_ASM19595v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/MycoTuber/genomic.gff"],
-    "klebsiella pneumoniae": [basedir + "/GeneFinder1/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/KlebsPneum/genomic.gff"],
-    "escherichia coli": [basedir + "/GeneFinder1/RefGenomes/EColi/GCA_000005845.2_ASM584v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EColi/genomic.gff"],
-    "pseudomonas aeruginosa": [basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/GCA_000006765.1_ASM676v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/PseudoAerugi/genomic.gff"],
-    "enterococcus faecium": [basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/GCF_003071425.1_ASM307142v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/EnteroFaecium/genomic.gff"],
-    "staphylococcus aureus": [basedir + "/GeneFinder1/RefGenomes/StaphylAureus/GCA_000013425.1_ASM1342v1_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StaphylAureus/genomic.gff"],
-    "streptococcus pneumoniae": [basedir + "/GeneFinder1/RefGenomes/StreptoPneum/GCA_001457635.1_NCTC7465_genomic.fna", basedir + "/GeneFinder1/RefGenomes/StreptoPneum/genomic.gff"],
-    "salmonella enterica": [basedir + "/GeneFinder1/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", basedir + "/GeneFinder1/RefGenomes/SalmEnter/genomic.gff"],
+    "mycobacterium tuberculosis": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/MycoTuber/GCA_000195955.2_ASM19595v2_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/MycoTuber/genomic.gff"],
+    "klebsiella pneumoniae": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/KlebsPneum/genomic.gff"],
+    "escherichia coli": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/EColi/GCA_000005845.2_ASM584v2_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/EColi/genomic.gff"],
+    "pseudomonas aeruginosa": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/PseudoAerugi/GCA_000006765.1_ASM676v1_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/PseudoAerugi/genomic.gff"],
+    "enterococcus faecium": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/EnteroFaecium/GCF_003071425.1_ASM307142v1_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/EnteroFaecium/genomic.gff"],
+    "staphylococcus aureus": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/StaphylAureus/GCA_000013425.1_ASM1342v1_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/StaphylAureus/genomic.gff"],
+    "streptococcus pneumoniae": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/StreptoPneum/GCA_001457635.1_NCTC7465_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/StreptoPneum/genomic.gff"],
+    "salmonella enterica": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/SalmEnter/GCA_000006945.2_ASM694v2_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/SalmEnter/genomic.gff"],
 }
 
 SPECIES = "mycobacterium tuberculosis" #Species name
@@ -23,16 +24,12 @@ DATAPHENO_PATH = f"/home/sass/Dev/PhenotypeSeeker/MycobacTuberGenes/Isoniazid/Ge
 #RandomForest - RF, logistic - log_reg  (choose from 'log', 'SVM', 'RF', 'NB', 'XGBC', 'DT')
 REGRESSION_MODEL = "RF"
 KMER_LENGTH = 13
+
+#likely unnecessary
 MIN_MISMATCHES = 0
 
-
-
-
-
-
-
 def main():
-    print("------ GeneFinder1 -------")
+    print("------ GenePointer -------")
     start = time.time()
     global SPECIES, ANTIBIOTIC, REF_GENOME_PATH, GFF_PATH, DATAPHENO_PATH, KMER_LENGTH, MIN_MISMATCHES,REGRESSION_MODEL
     inp = input("       Are you in the desired directory? Press Enter to continue... n to exit.")
@@ -56,7 +53,9 @@ def main():
     SPECIES = SPECIES.lower()
     ANTIBIOTIC = ANTIBIOTIC.lower() 
 
-        #Use full paths everywhere
+    #Use full paths everywhere
+    REF_GENOME_PATH = ""
+    GFF_PATH = ""
     if bacteria_and_ref_genome_and_gff != {}:
         REF_GENOME_PATH = bacteria_and_ref_genome_and_gff[SPECIES][0] #Path to the reference genome
         GFF_PATH = bacteria_and_ref_genome_and_gff[SPECIES][1] #Path to the GFF file
@@ -72,7 +71,7 @@ def main():
   
     
 
-    print("------ Running GeneFinder1 -------")
+    print("------ Running GenePointer -------")
 
 
     #----------------------FIND SIGNIFICANT KMERS----------------------
@@ -130,6 +129,10 @@ def main():
     call(["rm -rf mash_distances.mat"], shell=True)
     call(["rm -rf out_13.index"], shell=True)
     call(["rm -rf reference.msh"], shell=True)
+    call(["rm -rf ref_gnome_kmer_locs"], shell=True)
+    call(["rm -rf kmers_genomes.txt"], shell=True)
+
+
 
     #implement way of making this program command line firendly
     #give species and antibitoic on cmd line
