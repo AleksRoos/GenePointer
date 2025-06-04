@@ -8,7 +8,79 @@ from subprocess import run, call
 from Bio import SeqIO
 from Bio.Seq import Seq
 
+#USED
+def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
+    '''
+        Find kmers associated with the resistance phenotype in input genomed using phenotypeseeker.
+        The kmer length is set to 13 by default. The classifier can be either "log" or "RF".
+        The output file is filtered_kmers_and_coeffs.txt.
+        The function returns 1 if the kmers were found, 0 if not.
 
+        Also creates a ML model for predicting the phenotype in unseen genomes.
+
+        Parameters:
+            data_pheno_path: str - path to the data.pheno file
+            classifier: str - classifier to use, either "log" or "RF"
+            kmer_length: int - length of the kmers to find, default is 13
+        Creates files:
+            - k-mers_and_coefficients_in_<classifier>_model_<antibiotic>.txt
+            - filtered_kmers_and_coeffs.txt
+            - and more which are note used in the following pipeline
+        Returns:
+            int: 1 if the kmers were found, 0 if not
+    '''
+
+    print("----- Looking for significant kmers -------------- OUTPUT FILE: filtered_kmers_and_coeffs.txt")
+    antibiotic = ""
+    try:
+        with open(data_pheno_path, "r") as dataphenofile:           #open data.pheno file
+            lines = dataphenofile.readlines()
+            if len(lines) < 2:
+                print("        No data in file")
+                return 0
+            #print("DataPheno Header: ", lines[0].strip().split("\t"))
+            antibiotic = lines[0].strip().split()[2]           #get antibiotic name from first line of file
+    except FileNotFoundError:
+        print("        Data file not found")
+        return 0
+    print("         Looking for file ./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt")
+    if not os.path.exists("./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt"):
+        print("         File not found")
+        absolute_path = str(Path(data_pheno_path).resolve())
+        print("         RUNNING: phenotypeseeker modeling " + absolute_path + " -w -bc " + classifier + " -l " + str(kmer_length))             #if the k-mers and coefficients file does not exist, call phenotypeseeker to find significant kmers
+        call(["phenotypeseeker modeling " + absolute_path + " -w -bc " + classifier + " -l " + str(kmer_length)], shell=True)
+        print("         Finished executing phenotypeseeker")
+    try:
+        #add dictionary for classifier names if needed
+        if classifier == "log":
+            classifier = "log_reg"
+        #check if the k-mers and coefficients file exists. redundant if it is checked in previous function
+        with open("k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic.capitalize() + ".txt", "r") as kmers_coeffs:      #open k-mers and coefficients file with significant kmers found by phenotypeseeker
+            lines = kmers_coeffs.readlines()
+            if len(lines) == 0:
+                print("        No significant kmers found")
+                return 0
+
+            kmers = []
+            coeffs = []
+            whole_lines = []
+            for line in lines[1:]:                  
+                kmers.append(line.split("\t")[0])
+                coeffs.append(line.split("\t")[1])
+                whole_lines.append(line.strip().split("\t"))
+            print("         Number of significant kmers from PhenotypeSeeker: ", len(whole_lines))
+
+            whole_lines = sorted(whole_lines, key=lambda x: x[1], reverse=True)
+
+            with open("significant_lines_from_kmer_coeff_file.txt", "w") as file:
+                for line in whole_lines:
+                    line = "\t".join(line).replace("|", "")
+                    file.write(f"{line}\n")
+     
+    except FileNotFoundError:
+        print("        k-mers and coefficients file not found: No kmers found by phenotypeseeker")
+        return 0
+    return 1
 
 #USED
 def extract_kmer_with_flanks(kmer,fasta_file, add_length: int = 50):
@@ -35,6 +107,13 @@ def extract_kmer_with_flanks(kmer,fasta_file, add_length: int = 50):
                 results.append(region)
                 i += 1  # move forward to allow overlapping matches
     return results
+
+#WIP
+def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
+    rev_kmer = str(Seq(kmer).reverse_complement())
+    k = len(kmer)
+    results = []
+
 #USED
 def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene_biotype", "Name"]):
     attrs = dict(field.split('=') for field in info_from_GFF.strip(';').split(';'))
@@ -122,6 +201,7 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
         else:
             genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
             alignments.append({
+                #includes a mix of reverse and forward kmers
                 "kmer_id": kmer_id,
                 "coefficient":kmers_coeffs_genomes_dict[kmer_id],
                 "genome_id": genome_id,
@@ -191,7 +271,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
 
     #make file with genomes, kmers, locations in genome, larger DNA piece around kmer
 
-    print("-------- Finding genes in genomes ----------- OUTPUT FILE: genes.csv, intergenic.csv, Kmer_genome_loc_sequence.txt")
+    print("-------- Finding genes in genomes ----------- OUTPUT FILE: kmers_genomes_sequences_table.csv, alignments.csv, no_alignments.csv")
 
 
     species = species.lower()
@@ -209,14 +289,16 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     print("         Processing significant k-mer file: ", significant_kmers)
     with open(significant_kmers, "r") as file:
         lines = file.readlines()
-        for line in lines:
+        for line in lines[1:]:
+            line = line.replace("|", "")
             line = line.strip().split("\t")
             data_frame.append([line[0].strip(), float(line[1].strip()), line[2].strip(), line[3].strip()])
             genomes += " " + line[3].strip()
             
             
         genomes = genomes.strip().split(" ")
-        genomes = sorted(set(genomes), key=lambda x: int(x.split(".")[1]))
+        genomes = list(set(genomes))  #remove duplicates
+        genomes = sorted(genomes, key=lambda x: int(x.split(".")[1]))
     data_frame = sorted(data_frame, key=lambda x: x[1], reverse=True)          #sort data frame by kmer
     print(f"            K-mers sorted for coefficients:  {len(data_frame)}")
     for line in data_frame:
@@ -319,3 +401,11 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                 file.write("," + sequences)
     
     align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
+
+
+#MAYBE USED, would represent better the common elements between all input genomes that are associated with the phenotype?
+def combine_kmers_by_locations(significant_kmers):
+    #make file with combined kmers
+    #only combine kmers that are close enough to eachother
+    #fill in gaps with "_"
+    pass

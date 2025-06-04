@@ -1,4 +1,5 @@
-from gene_pointer import data_collection, analyse_genomes
+from GenePointer.gene_pointer import other_functions
+from gene_pointer import data_collection
 from subprocess import call
 #Use full paths everywhere
 

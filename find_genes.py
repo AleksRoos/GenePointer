@@ -1,4 +1,5 @@
-from gene_pointer import data_collection, analyse_genomes
+from GenePointer.gene_pointer import other_functions
+from gene_pointer import data_collection
 from subprocess import call
 import os
 import time
@@ -78,7 +79,7 @@ def main():
     #required folder for phenotypeseeker
     if not os.path.exists("./K-mer_lists"):
         call(["mkdir K-mer_lists"], shell=True)
-    good_result = analyse_genomes.find_significant_kmers(DATAPHENO_PATH, classifier = REGRESSION_MODEL, kmer_length = 13)
+    good_result = other_functions.find_significant_kmers(DATAPHENO_PATH, classifier = REGRESSION_MODEL, kmer_length = 13)
     if os.path.exists("K-mer_lists/"):
         print("------Emptying K-mer_lists directory-------")
         call(["rm -rf K-mer_lists/*"], shell=True)
@@ -91,9 +92,9 @@ def main():
 
     #---------------- REF GENOME AND ANNOTATED GENE FILE PREPROCESSING
     #find all kmers in ref genome and their locations -> file = ref_genome_kmer_locs.txt
-    analyse_genomes.index_genome(REF_GENOME_PATH, output_file="ref_gnome_kmer_locs.txt", kmer_length=KMER_LENGTH)
+    other_functions.index_genome(REF_GENOME_PATH, output_file="ref_gnome_kmer_locs.txt", kmer_length=KMER_LENGTH)
     #make GFF file smaller, take only required columns
-    analyse_genomes.filter_GFF_file(GFF_PATH, output_file="filtered_gff.txt")
+    other_functions.filter_GFF_file(GFF_PATH, output_file="filtered_gff.txt")
 
     #-----------------------FIND GENES IN REF GENOME
     #find kmers in common with the reference genome and the significant kmers -> file = pheno_kmers_ref_genome.txt
@@ -101,9 +102,9 @@ def main():
     if os.path.exists("./pheno_kmers_ref_genome.txt"):
         inp = input("           Do you want to look for kmers in reference index again? n to stop")
         if inp != "n":
-            analyse_genomes.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
+            other_functions.find_ref_genome_kmers("ref_gnome_kmer_locs.txt", "significant_lines_from_kmer_coeff_file.txt",output_file="pheno_kmers_ref_genome.txt")
     #find genes
-    analyse_genomes.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt")
+    other_functions.find_genes("pheno_kmers_ref_genome.txt", "filtered_gff.txt")
 
     
 
