@@ -128,15 +128,17 @@ def main():
 
         try:
             call(["mkdir Results"], shell=True)
-        except:
+            #call(["mv k-mers_and_coefficients_in_" + ML_CLASSIFIER_DICT[ML_CLASSIFIER] + "_model_" + ANTIBIOTIC.capitalize() + ".txt Results/"], shell=True)
+            call(["mv Aligned_kmer_results.csv Results/"], shell=True)
+            call(["mv Un_aligned_kmer_results.csv Results/"], shell=True)
+            call(["mv Summary_aligned_kmers.csv Results/"], shell=True)
+            call(["mv Summary_unaligned_kmers.csv Results/"], shell=True)
+            call(["cp kmers_genomes_sequences_table.csv Results/"], shell=True)
+        except FileExistsError:
             print("    Results directory already exists, skipping creation.")
-        #call(["mv k-mers_and_coefficients_in_" + ML_CLASSIFIER_DICT[ML_CLASSIFIER] + "_model_" + ANTIBIOTIC.capitalize() + ".txt Results/"], shell=True)
-        call(["mv alignments.csv Results/"], shell=True)
-        call(["mv no_alignments.csv Results/"], shell=True)
-        call(["mv k-mers_genomes_sequences_table.csv Results/"], shell=True)
-        call(["mv gene_summary_aligned.csv Results/"], shell=True)
-        call(["mv unaligned_summary.csv Results/"], shell=True)
-        call(["cp kmers_genomes_sequences_table.csv Results/"], shell=True)
+        except Exception as e:
+            print("    Error while moving to /Results directory:", str(e))
+        
 
         print("------------------ENDED ANALYSIS------------------")
         return 1

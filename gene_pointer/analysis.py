@@ -120,12 +120,17 @@ def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene
 #USED MINREQ
 def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
 
-    print("---------- Align To Genomes ---------- OUTPUT: alignments.csv, no_alignments.csv")
+    refseq_ID = ref_genome_file.strip().split("/")[-1][:-4].replace(".","_")
+    fasta_path = f"all_queries_for_{refseq_ID}.fa"
+    print(f"---------- Align To Genome {refseq_ID} ---------- OUTPUT FILES: Aligned_kmer_results.csv, Un_aligned_kmer_results.csv")
 
-    if not os.path.exists("ref_seq_index.1.bt2"):
-        run(f"bowtie2-build {ref_genome_file} ref_seq_index", shell=True)
+    print(f"    Reference genome id: {refseq_ID}")
+    refseq_index_file = f"refseq_{refseq_ID}_index"
 
-    fasta_path = "all_queries.fa"
+    if not os.path.exists(f"{refseq_index_file}.1.bt2"):
+        run(f"bowtie2-build {ref_genome_file} {refseq_index_file}", shell=True)
+
+    
     if sequence_matrix != []:
 
         matrix = {}
@@ -142,13 +147,15 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
                     out.write(f">query_{row}_{col}_{count}\n{seq}\n")
                     count += 1
 
-    call([f"bowtie2 --very-sensitive-local -p 8 -x ref_seq_index -f {fasta_path} -S output.sam"], shell=True)
+    sam_path = f"aligned_to_{refseq_ID}.sam"
+
+    call([f"bowtie2 --very-sensitive-local -p 8 -x {refseq_index_file} -f {fasta_path} -S {sam_path}"], shell=True)
 
     alignments = []
     noalignments = []
-    sam_path = "output.sam"
+    
     new_lines = []
-    with open("output.sam", "r") as sam:
+    with open(sam_path, "r") as sam:
         print(f"---------- Extracting alignment results from SAM file: {sam_path} ----------")
         lines = sam.readlines()
         for line in lines:
@@ -193,27 +200,27 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
         if read["reference_name"] == "*":
             noalignments.append(
                 {
-                    "kmer_id": kmer_id,
-                    "coefficient":kmers_coeffs_genomes_dict[kmer_id],
-                    "genome_id": genome_id,
-                    "ref": ref_name,
-                    "pos": aln_start,
-                    "seq": read["query_sequence"],
-                    "strand":strand
+                    "K-mer": kmer_id,
+                    "Coefficient in ML model":kmers_coeffs_genomes_dict[kmer_id][0],
+                    "Genome_ID": genome_id,
+                    "AlignementBaseSeq_ID": ref_name,
+                    "AlignmentLeftSide_Pos": aln_start,
+                    "AlignementSeq": read["query_sequence"],
+                    "Strand":strand
                 }
             )
         else:
             genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
             alignments.append({
                 #includes a mix of reverse and forward kmers
-                "kmer_id": kmer_id,
-                "coefficient":kmers_coeffs_genomes_dict[kmer_id],
-                "genome_id": genome_id,
-                "ref": ref_name,
-                "pos": aln_start,
-                "seq": read["query_sequence"],
-                "strand":strand,
-                "genes": genes,
+                "K-mer": kmer_id,
+                "Coefficient in ML model":kmers_coeffs_genomes_dict[kmer_id][0],
+                "Genome_ID": genome_id,
+                "AlignementBaseSeq_ID": ref_name,
+                "AlignmentLeftSide_Pos": aln_start,
+                "AlignementSeq": read["query_sequence"],
+                "Strand":strand,
+                "Genes from base sequence": genes,
             })
         times.append(time.time() - start)
 
@@ -221,8 +228,8 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
     df = pd.DataFrame(alignments)
     df_n = pd.DataFrame(noalignments)
     
-    df.to_csv("alignments.csv")
-    df_n.to_csv("no_alignments.csv")
+    df.to_csv("Aligned_kmer_results.csv")
+    df_n.to_csv("Un_aligned_kmer_results.csv")
 #USED MINREQ
 def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13, desired_columns = []):
 
@@ -347,9 +354,14 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     if reduce_kmers_to != 0 and reduce_kmers_to < len(kmers_genomes_dict.keys()):
         kmers = list(kmers_genomes_dict.keys())[:reduce_kmers_to]
 
-    if os.path.exists("all_queries.fa") and os.path.exists("kmers_genomes_sequences_table.csv"):
+    #DO THIS ON MORE THAN 1 REFERENCE/ANNOTATED GENOME
+    refseq_ID = ref_genome_file.strip().split("/")[-1][:-4].replace(".","_")
+    fasta_path = f"all_queries_for_{refseq_ID}.fa"
+    if os.path.exists(fasta_path) and os.path.exists("kmers_genomes_sequences_table.csv"):
         align_to_genome2([], ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)
         return 0
+    
+    
     print(f"    Expanding {len(kmers)} k-mers from their original {len(labelled_genomes)} genomes. {len(labelled_genomes) * len(kmers)}")
     #make sequence_matrix
     kmer_count = 0
@@ -378,17 +390,18 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     sequence_matrix = np.transpose(np.array(sequence_matrix))
     sequences = ""
 
-    ref_genome_row = []
-    ref_genome_row_string = ""
-
+    # ref_genome_row = []
+    # ref_genome_row_string = ""
+    
     #open resulting table file for writing
     with open("kmers_genomes_sequences_table.csv", "w") as file:
         file.write("Table")
         for i in range(len(kmers)):
             #add first row with kmers and their parameters in genomes.
             file.write(f", {kmers[i]} Counts(g; R; S): {kmer_count_res_sus_dict[kmers[i]]} Coefficient: {round(kmers_coeffs_genomes_dict[kmers[i]][0],7)}")
+            
             #make row for ref genome separately
-            ref_genome_row.append(extract_kmer_with_flanks(kmers[i], ref_genome_file))
+            #ref_genome_row.append(extract_kmer_with_flanks(kmers[i], ref_genome_file)
         
         #format genome rows and write to file
         shape = sequence_matrix.shape
@@ -401,6 +414,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                     sequences = str(sequence_matrix[i][j]).replace("[", "").replace("]", "").replace("'", "").replace(",", ";")
                 file.write("," + sequences)
     
+    #DO THIS FOR MORE THAN 1 REFERENCE/ANNOTATED GENOME
     align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
 
 
@@ -410,6 +424,24 @@ def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
     k = len(kmer)
     results = []
 
+#WIP
+def combine_GFFs(GFF_files_folder, output_file):
+    '''
+    Combine multiple GFF files into one.
+    Parameters:
+        GFF_files: list of str - paths to the GFF files to combine
+        output_file: str - path to the output file
+    Creates:
+        - output_file: combined GFF file
+    '''
+    with open(output_file, "w") as out_file:
+        for gff_file in GFF_files_folder.glob("*.gff"):
+            with open(gff_file, "r") as in_file:
+                lines = in_file.readlines()
+                for line in lines:
+                    if not line.startswith("#"):
+                        out_file.write(line)
+    print(f"Combined GFF files into {output_file}")
 
 #MAYBE USED, would represent better the common elements between all input genomes that are associated with the phenotype?
 def combine_kmers_by_locations(significant_kmers):

@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from Bio.Seq import Seq
 
+
+#USED MINREQ
 def readPvalue(chi_results):
     kmers = []
     pvalues = []
@@ -21,7 +23,7 @@ def readPvalue(chi_results):
                 pvalues.append(pvalue)
 
     return kmers, pvalues
-
+#USED MINREQ
 def get_kmer_prevalence(kmers, kmers_genomes_sequences):
     with open(kmers_genomes_sequences, "r") as file:
         lines = file.readlines()
@@ -39,6 +41,8 @@ def get_kmer_prevalence(kmers, kmers_genomes_sequences):
                         t, r, s = match.groups()
             kmer_prevalence_dict[kmer] = [str(t),str(r),str(s)]
     return kmer_prevalence_dict
+
+
 
 def summarise_intergenic_of_mapped_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
     kmers2, pvalues = chi_kmers, chi_pvals
@@ -115,9 +119,12 @@ def summarise_genes_of_mapped_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
             min_pval = min(p_values)
             summary.write(f"{gene},{min_pval},{'/'.join(kmer_prevalence_dict[min_pval_kmer])},{len(genes_kmers_dict[gene])},{' '.join(genes_kmers_dict[gene])},{' '.join(genes_locations[gene])}\n")
 
+
+
+#USED MINREQ
 def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
 
-    data_frame = pd.read_csv("alignments.csv", sep=",")
+    data_frame = pd.read_csv("Aligned_kmer_results.csv", sep=",")
     descriptions = data_frame.iloc[:, 8]
     kmer_names = data_frame.iloc[:, 1]
     genomes = data_frame.iloc[:,3]
@@ -159,8 +166,8 @@ def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
     for gene in genes_kmers_dict:
         genes_Ukmers_dict[gene] = len(genes_kmers_dict[gene])
 
-    with open("gene_summary_aligned.csv", "w") as csv_summary:
-        csv_summary.write(F"Gene({len(genes_kmers_dict.keys())}), Min of k-mer p-values, Signif. kmer prevalence (T/R/S), #Unique k-mers({len(kmer_prevalence_dict.keys())}), Gene prevalence in genomes (T/R/S) , Unique k-mers, Signif. k-mer location, Unique genomes\n")
+    with open("Summary_aligned_kmers.csv", "w") as csv_summary:
+        csv_summary.write(F"Genes (Total: {len(genes_kmers_dict.keys())}), Minimum k-mer p-value, Minimum p-value kmer prevalence (Tot/Res/Sus), #Unique k-mers({len(kmer_prevalence_dict.keys())}), Gene prevalence in genomes (T/R/S) , Unique k-mers, Minimum p-value k-mer location, Unique genomes\n")
         
         genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
         for key in genes_kmers_dict:
@@ -180,9 +187,9 @@ def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
     #         else:
     #             manhattan_data.write(f"{chi_kmers[i]},{list(set(kmers_locations_dict[chi_kmers[i]]))[0]},{chi_pvalues[i]}\n")
     return 0
-
+#USED MINREQ
 def summarise_unaligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
-    data_frame = pd.read_csv("no_alignments.csv", sep=",")
+    data_frame = pd.read_csv("Un_aligned_kmer_results.csv", sep=",")
     kmers = data_frame.iloc[:, 1]
     sequences = data_frame.iloc[:, 6]	
     chi_kmers, chi_pvalues = chi_kmers, chi_pvals
@@ -192,8 +199,8 @@ def summarise_unaligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
         kmer_pvals_dict[kmers[i]] = chi_pvalues[chi_kmers.index(kmers[i])]
 
 
-    with open("unaligned_summary.csv", "w") as summary:
-        summary.write(f"K-mer, P-value, Prevalence, Extended Sequence\n")
+    with open("Summary_unaligned_kmers.csv", "w") as summary:
+        summary.write(f"K-mer (Total: {len(kmers)}), P-value, Prevalence, Extended Sequence\n")
         lines = []
         for i in range(len(kmers)):
             kmer = kmers[i]
@@ -205,6 +212,7 @@ def summarise_unaligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
         for line in lines:
             summary.write(line)
 
+#USED
 def make_manhattan(pos_pval):
     # Step 1: Load the data
     df = pd.read_csv(pos_pval)
@@ -227,7 +235,7 @@ def make_manhattan(pos_pval):
     plt.xlim(0, 3149213)
     plt.savefig("manhattan_plot.png")
     plt.show()
-
+#USED
 def extract_antibiotics_from_folder(folder='.'):
     pattern = re.compile(r'k-mers_and_coefficients_in_(.+?)_model_(.+?)\.txt')
     antibiotics = []
@@ -240,9 +248,9 @@ def extract_antibiotics_from_folder(folder='.'):
             print(f"{fname} → Antibiotic: {antibiotic}")
     
     return antibiotics[0]
-
+#USED MINREQ
 def summarise_all(antibiotic = None):
-    print("---------- Summarising results ----------")
+    print("---------- Summarising results ---------- OUTPUT FILES: Summary_aligned_kmers.csv, Summary_unaligned_kmers.csv")
 
     try:
         antibiotic = extract_antibiotics_from_folder(".").lower().capitalize()
