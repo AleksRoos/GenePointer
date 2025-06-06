@@ -32,11 +32,9 @@ all scripts in the GenePointer folder should be run in the folder that analysis 
 download_genomes.py creates the folder Genomes for downloaded genomes and GenomPhenoFiles___{species_name}_{antibiotic} for all the data_*.pheno files.
 Sometimes genome files downloaded from PATRIC can be empty and the program will run into errors with these included in the data.pheno files. A bash script that takes the Genome directory and data.pheno path as input can fix this by checking if the file is empty and then removing it from the corresponding line in data.pheno.
 
-find_genes.py and find_gene2.py are analysis scripts and should be run in the folder where analysis results should go. They can take time and so it's best to run them using no hangup.
+find_and_align_kmers.py is the analysis script and should be run in the folder where analysis results should go. The program can take time and so it might be useful to run them using no hangup. Resulting data is summarised in the end of the script and moved into the /Results folder.
 
-If you already have the genomes with their corresponding prefixes ("1_" for positive phenotype, "0_" for negative phenotype) just run the make_genome_input_file.py script with the name of the species and the name of the antibiotic to make the data_pheno file that is used as input to PhenotypeSeeker. Intermediate values are not currently processable by GenePointer.
-
-summarise.py should be run after the find_genes*.py scripts have finished. It requires the output files: genes.csv, intergenic.csv and chi2_results_* from find_genes.py and alignments.csv, no_alignments.csv and chi2_results from find_genes2.py.  
+If you already have the genomes with their corresponding prefixes ("1_" for positive phenotype, "0_" for negative phenotype) just run the make_genome_input_file.py script with the name of the species and the name of the antibiotic to make the data_pheno file that is used as input to PhenotypeSeeker. Intermediate values are not currently processable by GenePointer. 
 
 Once you have the genomes downloaded and their corresponding ID,Address,Phenotype table file. Pass the table file's absolute path to the find_genes.py script where the DATAPHENO_PATH is defined and specify the species you are analysing to the SPECIES variable. Upon running the script everything should happen without further input.
 
@@ -52,32 +50,36 @@ The results of analysis will be written to the same folder the script is run in.
         - No. of samples with the k-mer
         - names of samples containing k-mer
 
+
+DEPRECATED
 - ##### ref_genome_kmer_locs.txt
     - Created by GenomeTester4 when indexing the reference genome.
     - Contains all k-mers (and k-mers with 1 mismatch) in the reference genome with their respective locations.
-
+DEPRECATED
 - ##### pheno_kmers_ref_genome.txt
     - Created when matching significant k-mers (filtered_kmers_and_coeffs.txt) to reference genome k-mers.
     - Contains all k-mers that the reference genome has in common with the significant k-mer list.
-
+DEPRECATED
 - ##### genes.csv, intergenic.csv
     - Created after locating all kmers on the reference genome and identifying the genes or intergenic regions they belong to. put into unidentified.txt if not anywhere on reference genome.
     
     - genes.csv Columns: k-mer, element class, element start, k-mer location, element end, element annotation
     - intergenic.csv Columns: k-mer, element class, element start, k-mer location, element end
 
-- ##### alignments.csv, no_alignments,csv
+- ##### Aligned_kmer_results.csv, Un_aligned_kmer_results.csv
     - Created by find_genes2.py and contains the results of aligning all the extended k-mers to the reference genome.
 
     - alignments.csv columns: kmer_id, coefficient of k-mer in output ML model, genome id, reference genome id, extended k-mer middle base position, sequence, strand, gene annotations
     - no_alignments.csv columns: kmer_id, coefficient of k-mer in output ML model, genome id, reference genome id, extended k-mer middle base position, sequence, strand(+,-)
 
-- ##### gene_summary_align.csv, unaligned_summary.csv
+- ##### Summary_aligned_kmers.csv, Summary_unalgined_kmers.csv
     - Created after analysing k-mers using alignment to the reference genome in find_genes2.py
 
-    - gene_summary_align.csv columns: Gene (total number of genes found), Minimum of k-mer p-values, Signif. kmer prevalence (Tot/Res/Sus), Num of Unique k-mers (total k-mers aligned), Gene prevalence in genomes (Tot/Res/Sus), Unique k-mers in gene, Signif. k-mer location, Genomes with gene.
-    - unaligned_summary.csv columns: K-mer, k-mer P-value, k-mer Prevalence, Extended k-mer Sequence
+    - Summary_aligned_kmers.csv columns: Gene (total number of genes found), Minimum of k-mer p-values, Signif. kmer prevalence (Tot/Res/Sus), Num of Unique k-mers (total k-mers aligned), Gene prevalence in genomes (Tot/Res/Sus), Unique k-mers in gene, Signif. k-mer location, Genomes with gene.
+    - Summary_unalgined_kmers.csv columns: K-mer, k-mer P-value, k-mer Prevalence, Extended k-mer Sequence
 
+
+DEPRECATED
 - ##### gene_summary_noalign.csv, intergenic_summary.csv
     - Created after placing k-mers using direct mapping in the find_genes.py script.
 
