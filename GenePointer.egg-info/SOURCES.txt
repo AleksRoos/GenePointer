@@ -5,5 +5,7 @@ GenePointer.egg-info/SOURCES.txt
 GenePointer.egg-info/dependency_links.txt
 GenePointer.egg-info/top_level.txt
 gene_pointer/__init__.py
-gene_pointer/analyse_genomes.py
+gene_pointer/analysis.py
 gene_pointer/data_collection.py
+gene_pointer/other_functions.py
+gene_pointer/summarise_data.py

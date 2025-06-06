@@ -7,9 +7,10 @@ import time
 from subprocess import run, call
 from Bio import SeqIO
 from Bio.Seq import Seq
+from pathlib import Path
 
-#USED
-def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13):
+#USED MINREQ
+def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13, POPULATION_CORRECTION: bool = True):
     '''
         Find kmers associated with the resistance phenotype in input genomed using phenotypeseeker.
         The kmer length is set to 13 by default. The classifier can be either "log" or "RF".
@@ -24,32 +25,37 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
             kmer_length: int - length of the kmers to find, default is 13
         Creates files:
             - k-mers_and_coefficients_in_<classifier>_model_<antibiotic>.txt
-            - filtered_kmers_and_coeffs.txt
             - and more which are note used in the following pipeline
         Returns:
             int: 1 if the kmers were found, 0 if not
     '''
 
-    print("----- Looking for significant kmers -------------- OUTPUT FILE: filtered_kmers_and_coeffs.txt")
+    print("---------- Looking for significant kmers ---------- OUTPUT FILE: k-mers_and_coefficients_in_<classifier>_model_<antibiotic>.txt")
     antibiotic = ""
     try:
         with open(data_pheno_path, "r") as dataphenofile:           #open data.pheno file
             lines = dataphenofile.readlines()
             if len(lines) < 2:
-                print("        No data in file")
+                print("    No data in file")
                 return 0
             #print("DataPheno Header: ", lines[0].strip().split("\t"))
             antibiotic = lines[0].strip().split()[2]           #get antibiotic name from first line of file
     except FileNotFoundError:
-        print("        Data file not found")
+        print("    Data file not found")
         return 0
-    print("         Looking for file ./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt")
-    if not os.path.exists("./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt"):
-        print("         File not found")
-        absolute_path = str(Path(data_pheno_path).resolve())
-        print("         RUNNING: phenotypeseeker modeling " + absolute_path + " -w -bc " + classifier + " -l " + str(kmer_length))             #if the k-mers and coefficients file does not exist, call phenotypeseeker to find significant kmers
-        call(["phenotypeseeker modeling " + absolute_path + " -w -bc " + classifier + " -l " + str(kmer_length)], shell=True)
-        print("         Finished executing phenotypeseeker")
+    
+    # print("    Looking for file ./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt")
+    # if not os.path.exists("./k-mers_and_coefficients_in_" + (classifier if classifier != "log" else "log_reg") + "_model" + "_" + antibiotic.capitalize() + ".txt"):
+    #     print("        File not found")
+
+    absolute_path = str(Path(data_pheno_path).resolve())
+    if POPULATION_CORRECTION:
+        popcorr = "-w"
+    else:
+        popcorr = ""
+    print(">>>>>>>>>>>>>>>>> RUNNING: phenotypeseeker modeling " + absolute_path + " -w -bc " + classifier + " -l " + str(kmer_length) + " <<<<<<<<<<<<<<<<<")             #if the k-mers and coefficients file does not exist, call phenotypeseeker to find significant kmers
+    call(["phenotypeseeker modeling " + absolute_path + " " + popcorr + " -bc " + classifier + " -l " + str(kmer_length)], shell=True)
+    print("    Finished executing phenotypeseeker")
     try:
         #add dictionary for classifier names if needed
         if classifier == "log":
@@ -58,7 +64,7 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
         with open("k-mers_and_coefficients_in_" + classifier + "_model" + "_" + antibiotic.capitalize() + ".txt", "r") as kmers_coeffs:      #open k-mers and coefficients file with significant kmers found by phenotypeseeker
             lines = kmers_coeffs.readlines()
             if len(lines) == 0:
-                print("        No significant kmers found")
+                print("    No significant kmers found")
                 return 0
 
             kmers = []
@@ -68,7 +74,7 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
                 kmers.append(line.split("\t")[0])
                 coeffs.append(line.split("\t")[1])
                 whole_lines.append(line.strip().split("\t"))
-            print("         Number of significant kmers from PhenotypeSeeker: ", len(whole_lines))
+            print("    Number of significant kmers from PhenotypeSeeker: ", len(whole_lines))
 
             whole_lines = sorted(whole_lines, key=lambda x: x[1], reverse=True)
 
@@ -78,11 +84,10 @@ def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_l
                     file.write(f"{line}\n")
      
     except FileNotFoundError:
-        print("        k-mers and coefficients file not found: No kmers found by phenotypeseeker")
+        print("    k-mers and coefficients file not found: No kmers found by phenotypeseeker")
         return 0
     return 1
-
-#USED
+#USED MINREQ
 def extract_kmer_with_flanks(kmer,fasta_file, add_length: int = 50):
     kmer = kmer.lower()
     rev_kmer = str(Seq(kmer).reverse_complement())
@@ -107,22 +112,15 @@ def extract_kmer_with_flanks(kmer,fasta_file, add_length: int = 50):
                 results.append(region)
                 i += 1  # move forward to allow overlapping matches
     return results
-
-#WIP
-def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
-    rev_kmer = str(Seq(kmer).reverse_complement())
-    k = len(kmer)
-    results = []
-
-#USED
+#USED MINREQ
 def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene_biotype", "Name"]):
     attrs = dict(field.split('=') for field in info_from_GFF.strip(';').split(';'))
     filtered = {key: attrs[key] for key in desired_columns if key in attrs}
     return filtered
-#USED
+#USED MINREQ
 def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
 
-    print("-------------Align To Genomes----------------- OUTPUT: alignments.csv, no_alignments.csv")
+    print("---------- Align To Genomes ---------- OUTPUT: alignments.csv, no_alignments.csv")
 
     if not os.path.exists("ref_seq_index.1.bt2"):
         run(f"bowtie2-build {ref_genome_file} ref_seq_index", shell=True)
@@ -133,7 +131,7 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
         matrix = {}
         for i in range(len(sequence_matrix)):
             for j in range(len(sequence_matrix[0])):
-                print(sequence_matrix[i][j])
+                #print(sequence_matrix[i][j])
                 if sequence_matrix[i][j][0] != "NotPresent":
                     matrix[kmers[j], labelled_genomes[i][2:]] = sequence_matrix[i][j]
 
@@ -150,10 +148,11 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
     noalignments = []
     sam_path = "output.sam"
     new_lines = []
-    print("opening SAM file: ", sam_path)
     with open("output.sam", "r") as sam:
+        print(f"---------- Extracting alignment results from SAM file: {sam_path} ----------")
         lines = sam.readlines()
         for line in lines:
+            print(f"\r    Lines read: {len(new_lines)} / {len(lines)}", end="\r", flush=True)
             if line[0] == "@":
                 continue
             line = line.strip().split("\t")
@@ -169,9 +168,14 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
                 "template_length":line[8].strip(),
                 "query_sequence":line[9].strip(),
             }))
+    print("\n    Lines processed: ", len(new_lines), " / ", len(lines), " (metadata lines not proccessed)")
 
+    
+    times = [0]
     for read in new_lines:
+        start = time.time()
         # Extract kmer_id and genome_id from query name: query_row_col_count
+        print(f"\r    SAM lines processed: {len(alignments) + len(noalignments)} / {len(new_lines)}   ET:{round((len(new_lines)-len(alignments) + len(noalignments))*np.median(times)/60,2)} min", end="\r", flush=True)
         match = re.match(r"query_(.+?)_(.+?)_(\d+)", read["query_name"])
         if not match:
             continue
@@ -211,18 +215,15 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
                 "strand":strand,
                 "genes": genes,
             })
+        times.append(time.time() - start)
+
+    print("    Making alignments.csv and no_alignments.csv files....")
     df = pd.DataFrame(alignments)
     df_n = pd.DataFrame(noalignments)
     
     df.to_csv("alignments.csv")
     df_n.to_csv("no_alignments.csv")
-
-
-
-
-
-    return 0 ,0 ,0
-#USED
+#USED MINREQ
 def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13, desired_columns = []):
 
     with open(GFF_file, "r") as GFF:
@@ -250,7 +251,7 @@ def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length
         if genes == "":
             genes = "NoGenesInRef"
         return genes
-#USED
+#USED MINREQ
 def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_genome_file = "Not added", reduce_genomes_to:int = 0, reduce_kmers_to:int = 0):
     '''
     Find genes associated with the kmers in the reference genome.
@@ -271,7 +272,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
 
     #make file with genomes, kmers, locations in genome, larger DNA piece around kmer
 
-    print("-------- Finding genes in genomes ----------- OUTPUT FILE: kmers_genomes_sequences_table.csv, alignments.csv, no_alignments.csv")
+    print("---------- Finding genes in genomes ---------- OUTPUT FILE: kmers_genomes_sequences_table.csv, alignments.csv, no_alignments.csv")
 
 
     species = species.lower()
@@ -286,7 +287,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     #       determine proportion of resistant and susceptible genomes
 
     genomes = ""
-    print("         Processing significant k-mer file: ", significant_kmers)
+    print("    Processing significant k-mer file: ", significant_kmers)
     with open(significant_kmers, "r") as file:
         lines = file.readlines()
         for line in lines[1:]:
@@ -300,7 +301,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
         genomes = list(set(genomes))  #remove duplicates
         genomes = sorted(genomes, key=lambda x: int(x.split(".")[1]))
     data_frame = sorted(data_frame, key=lambda x: x[1], reverse=True)          #sort data frame by kmer
-    print(f"            K-mers sorted for coefficients:  {len(data_frame)}")
+    print(f"        K-mers sorted for coefficients:  {len(data_frame)}")
     for line in data_frame:
         kmers_coeffs_genomes_dict[line[0]] = [line[1], line[2]]
         kmers_genomes_dict[line[0]] = line[3].strip().split(" ")
@@ -313,8 +314,8 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                 labelled_genomes.append(genome_file[:-4])
                 break
     labelled_genomes = sorted(labelled_genomes, key = lambda x: x[0])
-    print("             Unique genomes across all kmers: ", len(labelled_genomes))
-    print("             Resistant genomes: ", len([elem for elem in labelled_genomes if elem[0] == "1"]))
+    print("        Unique genomes across all kmers: ", len(labelled_genomes))
+    print("        Resistant genomes: ", len([elem for elem in labelled_genomes if elem[0] == "1"]))
     #K-mers with higher coefficients are first
     
     #print(labelled_genomes)
@@ -325,7 +326,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     
     kmers = list(kmers_genomes_dict.keys())
     kmer_count_res_sus_dict = {}
-    print("         Making kmer, genome count, resistant, susceptible dictionary")
+    print("    Making kmer, genome count, resistant, susceptible dictionary")
     for i in range(len(kmers)):
         genome_count = 0
         resistant_count = 0
@@ -346,10 +347,10 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
     if reduce_kmers_to != 0 and reduce_kmers_to < len(kmers_genomes_dict.keys()):
         kmers = list(kmers_genomes_dict.keys())[:reduce_kmers_to]
 
-    if os.path.exists("all_queries.fa"):
+    if os.path.exists("all_queries.fa") and os.path.exists("kmers_genomes_sequences_table.csv"):
         align_to_genome2([], ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)
         return 0
-    print(f"         Expanding {len(kmers)} k-mers from their original {len(labelled_genomes)} genomes. {len(labelled_genomes) * len(kmers)}")
+    print(f"    Expanding {len(kmers)} k-mers from their original {len(labelled_genomes)} genomes. {len(labelled_genomes) * len(kmers)}")
     #make sequence_matrix
     kmer_count = 0
     times = []
@@ -369,7 +370,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
         kmers_left -= 1
         duration = time.time() - start
         times.append(duration)
-        print(f"\r         K-mers expanded:  {kmer_count} / {len(kmers)}\tTime per kmer:  {round(np.median(np.array(times)), 2)} s\tEstimated time: {round(kmers_left*np.median(times)/60,2)} min", end="", flush=True)
+        print(f"\r        K-mers expanded:  {kmer_count} / {len(kmers)}\tTime per kmer:  {round(np.median(np.array(times)), 2)} s\tEstimated time: {round(kmers_left*np.median(times)/60,2)} min", end="", flush=True)
         sequence_matrix.append(columns)
     
     print("\n")    
@@ -401,6 +402,13 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                 file.write("," + sequences)
     
     align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
+
+
+#WIP
+def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
+    rev_kmer = str(Seq(kmer).reverse_complement())
+    k = len(kmer)
+    results = []
 
 
 #MAYBE USED, would represent better the common elements between all input genomes that are associated with the phenotype?

@@ -242,13 +242,15 @@ def extract_antibiotics_from_folder(folder='.'):
     return antibiotics[0]
 
 def summarise_all(antibiotic = None):
+    print("---------- Summarising results ----------")
+
     try:
         antibiotic = extract_antibiotics_from_folder(".").lower().capitalize()
         #print(f"Extracted antibiotic: {antibiotic}")
     except Exception as e:
         # If extraction fails, default to a specific antibiotic
-        antibiotic = input("Enter the antibiotic name (e.g., Ethambutol): ").strip().lower().capitalize()
-    print(f"Using antibiotic: {antibiotic}")
+        antibiotic = input("Enter the antibiotic name (e.g., ethambutol): ").strip().lower().capitalize()
+    print(f"    Using antibiotic: {antibiotic}")
 
     chi_kmers, chi_pvals = readPvalue(f"chi2_results_{antibiotic}_top1000.tsv")
     kmer_prevalence_dict = get_kmer_prevalence(chi_kmers, "kmers_genomes_sequences_table.csv")
@@ -262,4 +264,4 @@ def summarise_all(antibiotic = None):
     try:
         make_manhattan("positions_pvalues.csv")
     except:
-        print("skipping Manhattan plot generation.")
+        print("    Skipping Manhattan plot generation.")
