@@ -284,7 +284,7 @@ def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length
         if genes == "":
             genes = "NoGenesInRef"
         return genes
-    
+#USED MINREQ
 def find_in_AnnotationFile(location, chromosome_id ,AnnotationFile, padding:int = 50, kmer_length:int = 13):
 
 
@@ -322,7 +322,6 @@ def find_in_AnnotationFile(location, chromosome_id ,AnnotationFile, padding:int 
             # currently required format:
             # {line[2].strip()}, {chromosome_id}, {start}, {location}, {end}, {filter_gene_description(line[8], desired_columns)}|
             # intergenic, {chromosome_id}, {end}, {location}, {nextLine[3]}|
-
 #USED MINREQ
 def find_genes_alignment(significant_kmers, species, antibiotic, ref_genome_dir = "Not added", reduce_genomes_to:int = 0, reduce_kmers_to:int = 0):
     '''
@@ -505,8 +504,7 @@ def find_genes_alignment(significant_kmers, species, antibiotic, ref_genome_dir 
                 REFSEQ = os.path.join(ref_genome_dir, filename)
 
         align_to_genome2(sequence_matrix, REFSEQ, GFF, kmers, labelled_genomes, kmers_coeffs_genomes_dict) #align the sequences to the reference genome
-
-#WIP
+#USED MINREQ
 def name_files_with_seqID(folder):
     print(f"---------- Suffixing refseq and annotation files ----------")
     new_word = None
@@ -534,7 +532,7 @@ def name_files_with_seqID(folder):
             print(f"    No valid line found in {filename}")
     
     return None
-#WIP
+#USED MINREQ
 def group_files_by_suffix(directory='.'):
     grouped = defaultdict(list)
 
@@ -557,7 +555,7 @@ def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
     k = len(kmer)
     results = []
 
-#WIP
+#WIP?
 def combine_GFFs(GFF_files_folder, output_file):
     '''
     Combine multiple GFF files into one.
