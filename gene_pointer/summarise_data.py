@@ -45,86 +45,6 @@ def get_kmer_prevalence(kmers, kmers_genomes_sequences):
                         t, r, s = match.groups()
             kmer_prevalence_dict[kmer] = [str(t),str(r),str(s)]
     return kmer_prevalence_dict
-
-
-
-def summarise_intergenic_of_mapped_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
-    kmers2, pvalues = chi_kmers, chi_pvals
-
-    locations = []
-    kmers = []
-    starts =[]
-    ends = []
-    with open("intergenic.csv", "r") as intergenic_file:
-        lines = intergenic_file.readlines()
-        for line in lines:
-            line = line.strip().split(",")
-            kmers.append(line[0].strip())
-            locations.append(str(line[3].strip()))
-            starts.append(str(line[2].strip()))
-            ends.append(str(line[4].strip()))
-        
-    intergenicID_dict = defaultdict(list)
-    for i in range(len(locations)):
-        intergenic_region_name = "inter_" + starts[i] + "..." + ends[i]
-        intergenic_kmer_pvla = pvalues[kmers2.index(kmers[i])]
-        intergenic_kmer_location = locations[i]
-        intergenic_kmer = kmers[i]
-        intergenicID_dict[intergenic_region_name].append([intergenic_kmer, intergenic_kmer_pvla, intergenic_kmer_location])
-
-            #genomes.append(line[4].strip())
-    with open("intergenic_summary.csv", "w") as summary:
-        summary.write(f"inter_Start...End, Signif. k-mer p-value, Signif. k-mer prevalence, K-mer, Location\n")
-        for key,value in intergenicID_dict.items():
-            summary.write(f"{key},{value[0][1]},{'/'.join(kmer_prevalence_dict[value[0][0]])},{value[0][1]},{value[0][2]}\n")
-
-def summarise_genes_of_mapped_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
-
-    kmers2, pvalues = chi_kmers, chi_pvals
-
-    descriptions = []
-    locations = []
-    kmers = []
-
-    with open("genes.csv", "r") as genes_file:
-        lines = genes_file.readlines()
-
-        for line in lines:
-            line = line.strip().split(",")
-            kmers.append(line[0].strip())
-            locations.append(int(line[3].strip()))
-            descriptions.append(line[5].strip())
-            #genomes.append(line[4].strip())
-
-    genes_kmers_dict = defaultdict(list)
-    genes_pvalues_dict = defaultdict(float)
-    genes_locations = defaultdict(list)
-    genes_genomes_dict = defaultdict(list)
-    for i in range(len(descriptions)):
-        if descriptions[i].strip().split(",")[0] == "intergenic":
-            match = str("intergenic_" + descriptions[i].strip().split(",")[2].strip())
-        else:
-            match = re.search(r'Name=([\w.-]+)', descriptions[i])
-        if match:
-            genes_kmers_dict[match.group(1)].append(kmers[i])
-            genes_pvalues_dict[match.group(1)] += float(pvalues[kmers2.index(kmers[i])])
-            genes_locations[match.group(1)].append(str(locations[i]))
-
-    genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
-
-    with open("gene_summary_noalign.csv", "w") as summary:
-        summary.write(f"Genes {len(genes_kmers_dict.keys())}, Signif. k-mer p-value, Signif. k-mer prevalence, #Unique k-mers, Unique k-mers, Locations\n")
-        for gene in genes_kmers_dict:
-            kmers = genes_kmers_dict[gene]
-            p_values = []
-            for kmer in kmers:
-                p_values.append(pvalues[kmers2.index(kmer)])
-            min_pval_kmer = kmers[p_values.index(min(p_values))]
-            min_pval = min(p_values)
-            summary.write(f"{gene},{min_pval},{'/'.join(kmer_prevalence_dict[min_pval_kmer])},{len(genes_kmers_dict[gene])},{' '.join(genes_kmers_dict[gene])},{' '.join(genes_locations[gene])}\n")
-
-
-
 #USED MINREQ
 def summarise_aligned_kmers(alignments_file, chi_kmers, chi_pvals, kmer_prevalence_dict):
 
@@ -217,8 +137,7 @@ def summarise_unaligned_kmers(unaligned_file, chi_kmers, chi_pvals, kmer_prevale
         lines = set(lines)
         for line in lines:
             summary.write(line)
-
-
+#USED MINREQ
 def extract_info(entry):
     # 1. FeatureType: first element before the first comma
     feature_type = entry.split(",")[0].strip()
@@ -232,7 +151,7 @@ def extract_info(entry):
     gene_id = id_match.group(1) if id_match else None
 
     return pd.Series([feature_type, name_joined, gene_id])
-
+#USED MINREQ
 def summarise_multi_refseq_alignments(alignments_folder, chi_kmers, chi_pvals, kmer_prevalence_dict):
     
     
@@ -396,32 +315,7 @@ def summarise_multi_refseq_alignments(alignments_folder, chi_kmers, chi_pvals, k
 
     alignments_data.to_csv("Aligned_kmer_results.csv", index=False)
     unaligned_data.to_csv("Un_aligned_kmer_results.csv", index=False)
-
-
-#USED
-def make_manhattan(pos_pval):
-    # Step 1: Load the data
-    df = pd.read_csv(pos_pval)
-    # Step 2: Filter invalid positions
-    df = df[df["position"] != -1]
-
-    # Step 3: Compute -log10(pval)
-    df["neg_log10_p"] = -np.log10(df["pval"])
-
-    # Step 4: Sort by position
-    df = df.sort_values("position")
-
-    # Step 5: Plot
-    plt.figure(figsize=(10, 5))
-    plt.scatter(df["position"], df["neg_log10_p"], c="blue", s=10)
-    plt.title("Manhattan Plot")
-    plt.xlabel("Genomic Position")
-    plt.ylabel("-log10(p-value)")
-    plt.grid(True)
-    plt.xlim(0, 3149213)
-    plt.savefig("manhattan_plot.png")
-    plt.show()
-#USED
+#USED MINREQ
 def extract_antibiotics_from_folder(folder='.'):
     pattern = re.compile(r'k-mers_and_coefficients_in_(.+?)_model_(.+?)\.txt')
     antibiotics = []
