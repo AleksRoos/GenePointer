@@ -4,10 +4,13 @@ import os
 import re
 import math
 import time
-from subprocess import run, call
+from subprocess import run, call, DEVNULL
 from Bio import SeqIO
 from Bio.Seq import Seq
 from pathlib import Path
+from collections import defaultdict
+import csv
+
 
 #USED MINREQ
 def find_significant_kmers(data_pheno_path: str, classifier: str = "log", kmer_length: int = 13, POPULATION_CORRECTION: bool = True):
@@ -118,17 +121,34 @@ def filter_gene_description(info_from_GFF, desired_columns:list = ["gene", "gene
     filtered = {key: attrs[key] for key in desired_columns if key in attrs}
     return filtered
 #USED MINREQ
-def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict):
+def align_to_genome2(sequence_matrix, ref_genome, gff_file, kmers, labelled_genomes, kmers_coeffs_genomes_dict):
 
-    refseq_ID = ref_genome_file.strip().split("/")[-1][:-4].replace(".","_")
-    fasta_path = f"all_queries_for_{refseq_ID}.fa"
+    try:
+        refseq_ID = ref_genome.strip().split("/")[-1][:-4].replace(".","_")
+    except NameError:
+        print("    No reference genome file provided. Please provide a valid reference genome file.")
+    
+    
+    sam_path = os.path.join("SAMs",f"aligned_to_{refseq_ID}.sam")
+    refseq_index_file = f"refseq_{refseq_ID}_index"
+    indexfile = os.path.join("Indexes", refseq_index_file)
+    fasta_path = f"all_queries.fa"
+
+    if not os.path.exists("SAMs"):
+        os.makedirs("SAMs")
+    if not os.path.exists("Indexes"):
+        os.makedirs("Indexes")
+    if not os.path.exists("Alignments"):
+        os.makedirs("Alignments")
+
+
     print(f"---------- Align To Genome {refseq_ID} ---------- OUTPUT FILES: Aligned_kmer_results.csv, Un_aligned_kmer_results.csv")
 
     print(f"    Reference genome id: {refseq_ID}")
-    refseq_index_file = f"refseq_{refseq_ID}_index"
+    
 
-    if not os.path.exists(f"{refseq_index_file}.1.bt2"):
-        run(f"bowtie2-build {ref_genome_file} {refseq_index_file}", shell=True)
+    if not os.path.exists(os.path.join("Indexes", f"{refseq_index_file}.1.bt2")):
+        run(f"bowtie2-build {ref_genome} {indexfile}", shell=True, stdout=DEVNULL, stderr=DEVNULL)
 
     
     if sequence_matrix != []:
@@ -147,89 +167,95 @@ def align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, 
                     out.write(f">query_{row}_{col}_{count}\n{seq}\n")
                     count += 1
 
-    sam_path = f"aligned_to_{refseq_ID}.sam"
-
-    call([f"bowtie2 --very-sensitive-local -p 8 -x {refseq_index_file} -f {fasta_path} -S {sam_path}"], shell=True)
-
-    alignments = []
-    noalignments = []
     
-    new_lines = []
-    with open(sam_path, "r") as sam:
-        print(f"---------- Extracting alignment results from SAM file: {sam_path} ----------")
-        lines = sam.readlines()
-        for line in lines:
-            print(f"\r    Lines read: {len(new_lines)} / {len(lines)}", end="\r", flush=True)
-            if line[0] == "@":
+
+    if not os.path.exists(sam_path):
+        call([f"bowtie2 --very-sensitive-local -p 8 -x {indexfile} -f {fasta_path} -S {sam_path}"], shell=True)
+
+    if not os.path.exists("Alignments/Aligned_kmer_results_in_" + refseq_ID + ".csv") or not os.path.exists("Alignments/Un_aligned_kmer_results_in_" + refseq_ID + ".csv"):
+    
+        alignments = []
+        noalignments = []
+        
+        new_lines = []
+        with open(sam_path, "r") as sam:
+            print(f"---------- Extracting alignment results from SAM file: {sam_path} ----------")
+            lines = sam.readlines()
+            for line in lines:
+                print(f"\r    Lines read: {len(new_lines)} / {len(lines)}", end="\r", flush=True)
+                if line[0] == "@":
+                    continue
+                line = line.strip().split("\t")
+                new_lines.append(dict({
+                    "query_name":line[0].strip(),
+                    "is_reverse":line[1].strip() == "16",
+                    "reference_name":line[2].strip(),
+                    "reference_start":line[3].strip(),
+                    "map_quality":line[4].strip(),
+                    "cigar":line[5].strip(),
+                    "rnext":line[6].strip(),
+                    "pnext":line[7].strip(),
+                    "template_length":line[8].strip(),
+                    "query_sequence":line[9].strip(),
+                }))
+        print("\n    Lines processed: ", len(new_lines), " / ", len(lines), " (metadata lines not proccessed)")
+
+    
+    
+        times = [0]
+        for read in new_lines:
+            start = time.time()
+            # Extract kmer_id and genome_id from query name: query_row_col_count
+            print(f"\r    SAM lines processed: {len(alignments) + len(noalignments)} / {len(new_lines)}   ET:{round((len(new_lines)-len(alignments) + len(noalignments))*np.median(times)/60,2)} min", end="\r", flush=True)
+            match = re.match(r"query_(.+?)_(.+?)_(\d+)", read["query_name"])
+            if not match:
                 continue
-            line = line.strip().split("\t")
-            new_lines.append(dict({
-                "query_name":line[0].strip(),
-                "is_reverse":line[1].strip() == "16",
-                "reference_name":line[2].strip(),
-                "reference_start":line[3].strip(),
-                "map_quality":line[4].strip(),
-                "cigar":line[5].strip(),
-                "rnext":line[6].strip(),
-                "pnext":line[7].strip(),
-                "template_length":line[8].strip(),
-                "query_sequence":line[9].strip(),
-            }))
-    print("\n    Lines processed: ", len(new_lines), " / ", len(lines), " (metadata lines not proccessed)")
+            kmer_id, genome_id, _ = match.groups()
+            for labelled_genome in labelled_genomes:
+                if genome_id == labelled_genome[2:]:
+                    genome_id = labelled_genome
+                else:
+                    continue
 
-    
-    times = [0]
-    for read in new_lines:
-        start = time.time()
-        # Extract kmer_id and genome_id from query name: query_row_col_count
-        print(f"\r    SAM lines processed: {len(alignments) + len(noalignments)} / {len(new_lines)}   ET:{round((len(new_lines)-len(alignments) + len(noalignments))*np.median(times)/60,2)} min", end="\r", flush=True)
-        match = re.match(r"query_(.+?)_(.+?)_(\d+)", read["query_name"])
-        if not match:
-            continue
-        kmer_id, genome_id, _ = match.groups()
-        for labelled_genome in labelled_genomes:
-            if genome_id == labelled_genome[2:]:
-                genome_id = labelled_genome
+            strand = "-" if read["is_reverse"] else "+"
+            aln_start = read["reference_start"]  # 0-based leftmost position
+            ref_name = read["reference_name"]
+
+            if read["reference_name"] == "*":
+                noalignments.append(
+                    {
+                        "K-mer": kmer_id,
+                        "Coefficient in ML model":kmers_coeffs_genomes_dict[kmer_id][0],
+                        "Genome_ID": genome_id,
+                        "AlignementBaseSeq_ID": ref_name,
+                        "AlignmentLeftSide_Pos": aln_start,
+                        "AlignementSeq": read["query_sequence"],
+                        "Strand":strand
+                    }
+                )
             else:
-                continue
-
-        strand = "-" if read["is_reverse"] else "+"
-        aln_start = read["reference_start"]  # 0-based leftmost position
-        ref_name = read["reference_name"]
-
-        if read["reference_name"] == "*":
-            noalignments.append(
-                {
+                genes = find_in_AnnotationFile(aln_start, str(ref_name), gff_file)
+                alignments.append({
+                    #includes a mix of reverse and forward kmers
                     "K-mer": kmer_id,
                     "Coefficient in ML model":kmers_coeffs_genomes_dict[kmer_id][0],
                     "Genome_ID": genome_id,
                     "AlignementBaseSeq_ID": ref_name,
                     "AlignmentLeftSide_Pos": aln_start,
                     "AlignementSeq": read["query_sequence"],
-                    "Strand":strand
-                }
-            )
-        else:
-            genes = find_in_GFF2(aln_start, str(ref_name), GFF_file, desired_columns = ["gene", "Name", "Note"])
-            alignments.append({
-                #includes a mix of reverse and forward kmers
-                "K-mer": kmer_id,
-                "Coefficient in ML model":kmers_coeffs_genomes_dict[kmer_id][0],
-                "Genome_ID": genome_id,
-                "AlignementBaseSeq_ID": ref_name,
-                "AlignmentLeftSide_Pos": aln_start,
-                "AlignementSeq": read["query_sequence"],
-                "Strand":strand,
-                "Genes from base sequence": genes,
-            })
-        times.append(time.time() - start)
+                    "Strand":strand,
+                    "Genes from base sequence": genes,
+                })
+            times.append(time.time() - start)
 
-    print("    Making alignments.csv and no_alignments.csv files....")
-    df = pd.DataFrame(alignments)
-    df_n = pd.DataFrame(noalignments)
-    
-    df.to_csv("Aligned_kmer_results.csv")
-    df_n.to_csv("Un_aligned_kmer_results.csv")
+        print(f"    Making alignments.csv and no_alignments.csv result files for seqID: {refseq_ID}")
+        df = pd.DataFrame(alignments)
+        df_n = pd.DataFrame(noalignments)
+        
+        
+
+        df.to_csv(f"Alignments/Aligned_kmer_results_in_{refseq_ID}.csv")
+        df_n.to_csv(f"Alignments/Un_aligned_kmer_results_in_{refseq_ID}.csv")
 #USED MINREQ
 def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length:int = 13, desired_columns = []):
 
@@ -258,8 +284,47 @@ def find_in_GFF2(location, chromosome_id ,GFF_file, padding:int =50, kmer_length
         if genes == "":
             genes = "NoGenesInRef"
         return genes
+    
+def find_in_AnnotationFile(location, chromosome_id ,AnnotationFile, padding:int = 50, kmer_length:int = 13):
+
+
+    # Fields to extract
+    # fields_of_interest = ["Accession", "Begin", "End", "Chromosome", "Name", "Symbol", "Gene Type", "Protein accession"]
+
+    # Read and parse the file
+    with open(AnnotationFile, newline='', encoding='utf-8') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        rows = list(reader)
+        for i in range(len(rows)):
+
+            row = rows[i]
+            row = {key.strip(): value for key, value in row.items()}
+            # Extract and clean up relevant fields
+            if chromosome_id != row["Accession"].strip():
+                continue
+
+            nextLine = rows[i+1] if i+1 < len(rows) else ""
+            nextLine = {key.strip(): value for key, value in nextLine.items()}
+            start = int(row["Begin"].strip())
+            end = int(row["End"].strip())
+            next_start = int(nextLine["Begin"].strip())
+            middle_of_align = int(location) + padding + round(kmer_length/2)
+            if middle_of_align >= start and middle_of_align <= end:
+                # Create a formatted string with the desired fields
+                line = f"GeneType:{row['Gene Type']}, GenomeID:{row['Accession'].strip()}, Gene start:{start}, K-mer location:{location}, Gene end:{end}," + "Annotation:{" + f"Name:{row['Name'].strip()}, Symbol:{row['Symbol'].strip()}, ChromosomeID:{row['Chromosome'].strip()}, ProteinAccession:{row['Protein accession'].strip()}" + "}|"
+                return line
+            elif nextLine != "" and middle_of_align >= end and middle_of_align <= next_start:
+                line = f"Intergenic, GenomeID:{row['Accession'].strip()}, Region start{end}, K-mer location{location}, Region end{next_start}|"
+                return line
+            else:
+                return "NoGenesInRef"
+
+            # currently required format:
+            # {line[2].strip()}, {chromosome_id}, {start}, {location}, {end}, {filter_gene_description(line[8], desired_columns)}|
+            # intergenic, {chromosome_id}, {end}, {location}, {nextLine[3]}|
+
 #USED MINREQ
-def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_genome_file = "Not added", reduce_genomes_to:int = 0, reduce_kmers_to:int = 0):
+def find_genes_alignment(significant_kmers, species, antibiotic, ref_genome_dir = "Not added", reduce_genomes_to:int = 0, reduce_kmers_to:int = 0):
     '''
     Find genes associated with the kmers in the reference genome.
     The output files are genes.csv, intergenic.csv and Kmer_genome_loc_sequence.txt.
@@ -355,10 +420,23 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
         kmers = list(kmers_genomes_dict.keys())[:reduce_kmers_to]
 
     #DO THIS ON MORE THAN 1 REFERENCE/ANNOTATED GENOME
-    refseq_ID = ref_genome_file.strip().split("/")[-1][:-4].replace(".","_")
-    fasta_path = f"all_queries_for_{refseq_ID}.fa"
+    
+    refseq_gff_dict = group_files_by_suffix(directory=ref_genome_dir)
+    fasta_path = f"all_queries.fa"
     if os.path.exists(fasta_path) and os.path.exists("kmers_genomes_sequences_table.csv"):
-        align_to_genome2([], ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)
+
+        GFF = ""
+        REFSEQ = ""
+        for suffix, pair in refseq_gff_dict.items():
+            print(f"\n    Processing pair for seqID '{suffix}': {pair}")
+            for filename in pair:
+                # You can set different separators depending on the file name
+                if filename[-4:] == ".tsv":
+                    GFF = os.path.join(ref_genome_dir, filename)
+                elif filename[-4:] == ".fna":
+                    REFSEQ = os.path.join(ref_genome_dir, filename)
+
+            align_to_genome2([], REFSEQ, GFF, kmers, labelled_genomes, kmers_coeffs_genomes_dict)
         return 0
     
     
@@ -415,9 +493,64 @@ def find_genes_alignment(significant_kmers, species, antibiotic, GFF_file, ref_g
                 file.write("," + sequences)
     
     #DO THIS FOR MORE THAN 1 REFERENCE/ANNOTATED GENOME
-    align_to_genome2(sequence_matrix, ref_genome_file, kmers, labelled_genomes, GFF_file, kmers_coeffs_genomes_dict)          #align the sequences to the reference genome
+    GFF = ""
+    REFSEQ = ""
+    for suffix, pair in refseq_gff_dict.items():
+        print(f"\n    Processing pair for seqID '{suffix}': {pair}")
+        for filename in pair:
+            # You can set different separators depending on the file name
+            if filename[-4:] == ".tsv":
+                GFF = os.path.join(ref_genome_dir, filename)
+            elif filename[-4:] == ".fna":
+                REFSEQ = os.path.join(ref_genome_dir, filename)
+
+        align_to_genome2(sequence_matrix, REFSEQ, GFF, kmers, labelled_genomes, kmers_coeffs_genomes_dict) #align the sequences to the reference genome
+
+#WIP
+def name_files_with_seqID(folder):
+    print(f"---------- Suffixing refseq and annotation files ----------")
+    new_word = None
 
 
+    for filename in os.listdir(folder):
+        with open(os.path.join(folder, filename), 'r') as file:
+            lines = file.readlines()
+
+        print(lines[0])
+
+        if lines[0][0] == ">":
+            new_word = "Genome_" + lines[0].strip().split()[0][1:]  # Get the first word after '>'
+        elif lines[0][0] == "A":
+            new_word = "Annotations_" + lines[1].strip().split("\t")[0]
+
+        new_word = new_word.strip()
+        if new_word:
+            _, ext = os.path.splitext(filename)
+            new_filename = f"{new_word}{ext}"
+            if new_filename != filename:
+                os.rename(os.path.join(folder, filename), os.path.join(folder, new_filename))
+            print(f"    Renamed '{filename}' to '{new_filename}'")
+        else:
+            print(f"    No valid line found in {filename}")
+    
+    return None
+#WIP
+def group_files_by_suffix(directory='.'):
+    grouped = defaultdict(list)
+
+    for fname in os.listdir(directory):
+        if os.path.isfile(os.path.join(directory, fname)):
+            base, ext = os.path.splitext(fname)
+            if base.split("_")[0] == "Annotations":  # Check if the last part of the base name is a number
+                suffix = base[12:-4]  # Get the last part of the base name
+                grouped[suffix].append(fname)
+            elif base.split("_")[0] == "Genome":  # Check if the last part of the base name is a number
+                suffix = base[7:-4]  # Get the last part of the base name
+                grouped[suffix].append(fname)
+            else:
+                print("Files not suffixed corrrectly, please run name_files_with_seqID() function on refseq and annotation file folder")
+    # Keep only groups that are exactly pairs
+    return {k: v for k, v in grouped.items() if len(v) == 2}
 #WIP
 def extract_kmer_with_flanks2(kmer, fasta_file, add_length: int = 50):
     rev_kmer = str(Seq(kmer).reverse_complement())
@@ -442,7 +575,6 @@ def combine_GFFs(GFF_files_folder, output_file):
                     if not line.startswith("#"):
                         out_file.write(line)
     print(f"Combined GFF files into {output_file}")
-
 #MAYBE USED, would represent better the common elements between all input genomes that are associated with the phenotype?
 def combine_kmers_by_locations(significant_kmers):
     #make file with combined kmers

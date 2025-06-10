@@ -2,10 +2,14 @@ import pandas as pd
 from collections import defaultdict
 import re
 import os
+from gene_pointer import analysis
+import pandas as pd
+from glob import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
 from Bio.Seq import Seq
+import ast
 
 
 #USED MINREQ
@@ -122,14 +126,16 @@ def summarise_genes_of_mapped_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
 
 
 #USED MINREQ
-def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
+def summarise_aligned_kmers(alignments_file, chi_kmers, chi_pvals, kmer_prevalence_dict):
 
-    data_frame = pd.read_csv("Aligned_kmer_results.csv", sep=",")
+    data_frame = pd.read_csv(alignments_file, sep=",")
     descriptions = data_frame.iloc[:, 8]
     kmer_names = data_frame.iloc[:, 1]
     genomes = data_frame.iloc[:,3]
     locations = data_frame.iloc[:, 5]
     chi_kmers, chi_pvalues = chi_kmers, chi_pvals
+    seqID = alignments_file.split("_")[-2]
+    print(seqID)
 
     genes_kmers_dict = defaultdict(list)
     kmers_locations_dict = defaultdict(dict)
@@ -166,7 +172,7 @@ def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
     for gene in genes_kmers_dict:
         genes_Ukmers_dict[gene] = len(genes_kmers_dict[gene])
 
-    with open("Summary_aligned_kmers.csv", "w") as csv_summary:
+    with open(f"Summary_aligned_kmers{seqID}.csv", "w") as csv_summary:
         csv_summary.write(F"Genes (Total: {len(genes_kmers_dict.keys())}), Minimum k-mer p-value, Minimum p-value kmer prevalence (Tot/Res/Sus), #Unique k-mers({len(kmer_prevalence_dict.keys())}), Gene prevalence in genomes (T/R/S) , Unique k-mers, Minimum p-value k-mer location, Unique genomes\n")
         
         genes_kmers_dict = dict(sorted(genes_kmers_dict.items(), reverse=True))
@@ -188,8 +194,8 @@ def summarise_aligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
     #             manhattan_data.write(f"{chi_kmers[i]},{list(set(kmers_locations_dict[chi_kmers[i]]))[0]},{chi_pvalues[i]}\n")
     return 0
 #USED MINREQ
-def summarise_unaligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
-    data_frame = pd.read_csv("Un_aligned_kmer_results.csv", sep=",")
+def summarise_unaligned_kmers(unaligned_file, chi_kmers, chi_pvals, kmer_prevalence_dict):
+    data_frame = pd.read_csv(unaligned_file, sep=",")
     kmers = data_frame.iloc[:, 1]
     sequences = data_frame.iloc[:, 6]	
     chi_kmers, chi_pvalues = chi_kmers, chi_pvals
@@ -211,6 +217,186 @@ def summarise_unaligned_kmers(chi_kmers, chi_pvals, kmer_prevalence_dict):
         lines = set(lines)
         for line in lines:
             summary.write(line)
+
+
+def extract_info(entry):
+    # 1. FeatureType: first element before the first comma
+    feature_type = entry.split(",")[0].strip()
+
+    # 2. All 'Name' values using regex
+    names = re.findall(r"'Name':\s*'([^']+)'", entry)
+    name_joined = "-".join(names) if names else None
+
+    # 3. First ID inside 'Note'
+    id_match = re.search(r"ID:([^%~;\s]+)", entry)
+    gene_id = id_match.group(1) if id_match else None
+
+    return pd.Series([feature_type, name_joined, gene_id])
+
+def summarise_multi_refseq_alignments(alignments_folder, chi_kmers, chi_pvals, kmer_prevalence_dict):
+    
+    
+    
+    # Load all matching files for aligned sequences
+    files = glob(f"{alignments_folder}/Aligned*.csv")
+    df_list = [pd.read_csv(file) for file in files]
+    alignments_data = pd.concat(df_list, ignore_index=True)
+    
+
+    # Load all matching files for unaligned sequences
+    files = glob(f"{alignments_folder}/Un_aligned*.csv")
+    df_list = [pd.read_csv(file) for file in files]
+    unaligned_data = pd.concat(df_list, ignore_index=True)
+
+    # Make k-mer p-values dict from chi_kmers and chi_pvals
+    kmer_pval_dict = dict(zip(chi_kmers, chi_pvals))
+
+    #Add k-mer p-values to dataframes
+    alignments_data["K-mer p-value"] = alignments_data["K-mer"].map(kmer_pval_dict)
+    unaligned_data["K-mer p-value"] = unaligned_data["K-mer"].map(kmer_pval_dict)
+
+    #Add k-mer prevalence to dataframes
+    alignments_data["K-mer prevalence"] = alignments_data["K-mer"].map(kmer_prevalence_dict)
+    unaligned_data["K-mer prevalence"] = unaligned_data["K-mer"].map(kmer_prevalence_dict)
+
+    # Make values numeric 
+    alignments_data["K-mer p-value"] = pd.to_numeric(alignments_data["K-mer p-value"], errors="coerce")
+    unaligned_data["K-mer p-value"] = pd.to_numeric(unaligned_data["K-mer p-value"], errors="coerce")
+    alignments_data["AlignmentLeftSide_Pos"] = pd.to_numeric(alignments_data["AlignmentLeftSide_Pos"], errors="coerce")
+    
+    # Move useful annotation values from "Genes from base sequence" into separate columns
+    alignments_data[['FeatureType', 'Name', 'ID']] = alignments_data['Genes from base sequence'].apply(extract_info)
+
+    # Move p-value column next to k-mer column
+    cols = alignments_data.columns.tolist()
+    kmer_index = cols.index("K-mer")
+    cols.insert(kmer_index + 1, cols.pop(cols.index("K-mer p-value")))
+    alignments_data = alignments_data[cols]
+
+    # Move p-value column next to k-mer column in unaligned data
+    cols = unaligned_data.columns.tolist()
+    kmer_index = cols.index("K-mer")
+    cols.insert(kmer_index + 1, cols.pop(cols.index("K-mer p-value")))
+    unaligned_data = unaligned_data[cols]
+
+
+
+
+    min_pos = alignments_data["AlignmentLeftSide_Pos"].min()
+    max_pos = alignments_data["AlignmentLeftSide_Pos"].max()
+    bin_width = 4000
+    # Create bins based on the min and max positions
+    bin_edges = list(range(int(min_pos) // bin_width * bin_width,
+                        int(max_pos) // bin_width * bin_width + bin_width,
+                        bin_width))
+
+    # Use pd.cut with custom integer bins
+    alignments_data["PositionBin"] = pd.cut(
+        alignments_data["AlignmentLeftSide_Pos"],
+        bins=bin_edges,
+        right=False  # Optional: choose whether the right edge is inclusive
+    )
+
+
+    #alignments_data["PositionBin"] = pd.cut(alignments_data["AlignmentLeftSide_Pos"], bins=1000)
+    position_summary = alignments_data.groupby("PositionBin")["K-mer"].count()
+    position_summary.to_csv("position_kmer_count_summary.csv", header=True)
+    
+    # Step 3: Group by bin and compute average p-value
+    epsilon = 1
+    alignments_data["K-mer log p-value"] = -np.log10(alignments_data["K-mer p-value"].fillna(epsilon))
+    position_pval_avg = alignments_data.groupby("PositionBin")["K-mer log p-value"].sum()
+    # Step 4: Export to CSV
+    position_pval_avg.to_csv("position_kmer_pval_summary.csv", header=True)
+
+
+    def get_top_genes(series):
+        num_genes = 5
+        counts = series.dropna().value_counts()
+        if counts.empty:
+            return "Unknown"
+        return ", ".join(counts.head(num_genes).index)
+
+    # Get 3 most common genes per position bin
+    top_genes = (
+        alignments_data
+        .groupby("PositionBin")["Name"]
+        .agg(get_top_genes)
+        .reset_index()
+        .rename(columns={"Name": "TopGenes"})
+    )
+
+
+
+
+
+
+    binned_df = pd.read_csv("position_kmer_count_summary.csv")
+    binned_df["PositionBin"] = binned_df["PositionBin"].astype(str)
+    
+    binned_df = position_pval_avg.reset_index()
+    binned_df.columns = ["PositionBin", "K-mer"]
+    binned_df = binned_df.merge(top_genes, on="PositionBin", how="left")
+    binned_df.to_csv("position_kmer_count_summary.csv", index=False)
+
+    plt.figure(figsize=(20, 5))
+    plt.bar(range(len(binned_df)), binned_df["K-mer"], color="skyblue")
+    
+    N = 1
+    for i, (gene, value) in enumerate(zip(binned_df["TopGenes"], binned_df["K-mer"])):
+        if i % N == 0:  # show label every N bars
+            plt.text(i, value + 0.1, gene, ha='center', va='bottom', fontsize=1, rotation=90)
+
+    plt.xticks(
+        ticks=range(0, len(binned_df), N),
+        labels=binned_df["PositionBin"][::N],
+        rotation=90,
+        fontsize=1
+    )
+    plt.xlabel("Position Bins across genome")
+    plt.ylabel("K-mer Count")
+    plt.title("K-mer Distribution by Binned Positions with Top Genes")
+    plt.tight_layout()
+    plt.savefig("kmer_count_position_binned_histogram_with_genes.png", dpi=1000)
+    plt.close()
+
+    binned_df = pd.read_csv("position_kmer_pval_summary.csv")
+    binned_df["PositionBin"] = binned_df["PositionBin"].astype(str)
+
+    # Step 2: Merge with binned log p-value dataframe
+    binned_df = position_pval_avg.reset_index()
+    binned_df.columns = ["PositionBin", "K-mer log p-value"]
+    binned_df = binned_df.merge(top_genes, on="PositionBin", how="left")
+
+    binned_df.to_csv("position_kmer_pval_summary.csv", index=False)
+
+    plt.figure(figsize=(20, 5))
+    plt.bar(range(len(binned_df)), binned_df["K-mer log p-value"], color="skyblue")
+    
+    N = 1
+    for i, (gene, value) in enumerate(zip(binned_df["TopGenes"], binned_df["K-mer log p-value"])):
+        if i % N == 0:  # show label every N bars
+            plt.text(i, value + 0.1, gene, ha='center', va='bottom', fontsize=1, rotation=90)
+
+    
+    # Custom ticks
+    plt.xticks(
+        ticks=range(0, len(binned_df), N),
+        labels=binned_df["PositionBin"].astype(str)[::N],
+        rotation=90,
+        fontsize=1
+    )
+
+    plt.xlabel("Position Bins across genome")
+    plt.ylabel("K-mer log p-val sum")
+    plt.title("K-mer Distribution by Binned Alignment Position with Top Genes")
+    plt.tight_layout()
+    plt.savefig("kmer_sum_pval_position_binned_histogram_with_genes.png", dpi=1000)
+    plt.close()
+
+    alignments_data.to_csv("Aligned_kmer_results.csv", index=False)
+    unaligned_data.to_csv("Un_aligned_kmer_results.csv", index=False)
+
 
 #USED
 def make_manhattan(pos_pval):
@@ -252,6 +438,7 @@ def extract_antibiotics_from_folder(folder='.'):
 def summarise_all(antibiotic = None):
     print("---------- Summarising results ---------- OUTPUT FILES: Summary_aligned_kmers.csv, Summary_unaligned_kmers.csv")
 
+    
     try:
         antibiotic = extract_antibiotics_from_folder(".").lower().capitalize()
         #print(f"Extracted antibiotic: {antibiotic}")
@@ -263,13 +450,28 @@ def summarise_all(antibiotic = None):
     chi_kmers, chi_pvals = readPvalue(f"chi2_results_{antibiotic}_top1000.tsv")
     kmer_prevalence_dict = get_kmer_prevalence(chi_kmers, "kmers_genomes_sequences_table.csv")
 
-    #summarise_genes_of_mapped_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
-    #summarise_intergenic_of_mapped_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
-    
-    summarise_aligned_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
-    summarise_unaligned_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
+    summarise_multi_refseq_alignments("Alignments", chi_kmers, chi_pvals, kmer_prevalence_dict)
 
-    try:
-        make_manhattan("positions_pvalues.csv")
-    except:
-        print("    Skipping Manhattan plot generation.")
+
+    # #summarise_genes_of_mapped_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
+    # #summarise_intergenic_of_mapped_kmers(chi_kmers, chi_pvals,kmer_prevalence_dict)
+    # alignment_dir = "Alignments"
+    # alignments_files_dict = analysis.group_files_by_suffix(alignment_dir)
+    # alignment_file = ""
+    # unaligned_file = ""
+    # for suffix, pair in alignments_files_dict.items():
+    #     print(f"\n    Summarising pair for seqID '{suffix}': {pair}")
+    #     for filename in pair:
+    #         # You can set different separators depending on the file name
+    #         if filename[-4:] == ".gff":
+    #             GFF = os.path.join(alignment_dir, filename)
+    #         elif filename[-4:] == ".fna":
+    #             REFSEQ = os.path.join(alignment_dir, filename)
+
+    # summarise_aligned_kmers(alignment_file, chi_kmers, chi_pvals,kmer_prevalence_dict)
+    # summarise_unaligned_kmers(unaligned_file, chi_kmers, chi_pvals,kmer_prevalence_dict)
+
+    # try:
+    #     make_manhattan("positions_pvalues.csv")
+    # except:
+    #     print("    Skipping Manhattan plot generation.")

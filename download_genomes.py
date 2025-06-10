@@ -82,8 +82,8 @@ def get_latest_metadata(outdir):
 
 def main():
 
-    SPECIES = "mycobacterium tuberculosis" #Species to download genomes for
-    ANTIBIOTIC = "ethambutol" #Antibiotic to download genomes for
+    SPECIES = "enterococcus faecium" #Species to download genomes for
+    ANTIBIOTIC = "vancomycin" #Antibiotic to download genomes for
 
     inp = input("Are you in the desired directory? Press Enter to continue... n to exit.")
     if inp == "n":

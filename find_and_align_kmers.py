@@ -13,7 +13,7 @@ from dotenv import get_key
 def main():
 
     try:
-        GENEPOINTER_DIR = get_key(".env","GENEPOINTER_DIR")
+        GENEPOINTER_DIR = get_key("/home/sass/Dev/PhenotypeSeeker/.env","GENEPOINTER_DIR")
         bacteria_and_ref_genome_and_gff = {
             "mycobacterium tuberculosis": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/MycoTuber/GCA_000195955.2_ASM19595v2_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/MycoTuber/genomic.gff"],
             "klebsiella pneumoniae": [GENEPOINTER_DIR + "/GenePointer/RefGenomes/KlebsPneum/GCF_023546055.1_ASM2354605v1_genomic.fna", GENEPOINTER_DIR + "/GenePointer/RefGenomes/KlebsPneum/genomic.gff"],
@@ -39,9 +39,11 @@ def main():
         print(">>>>>>>>>>>>>>>>> RUNNING GENEPOINTER <<<<<<<<<<<<<<<<<")
 
 
+        analysis.name_files_with_seqID("/home/sass/Dev/PhenotypeSeeker/GenePointer/RefGenomes/EnteroFaecium")
+        
         #INPUT PARAMETERS
-        SPECIES = "mycobacterium tuberculosis" #Species to download genomes for
-        ANTIBIOTIC = "ethambutol"
+        SPECIES = "enterococcus faecium" #Species to download genomes for
+        ANTIBIOTIC = "vancomycin"
         ML_CLASSIFIER = "log"
         POPULATION_CORRECTION = True
 
@@ -50,6 +52,8 @@ def main():
 
         REFSEQ = bacteria_and_ref_genome_and_gff[SPECIES][0]
         GFF = bacteria_and_ref_genome_and_gff[SPECIES][1]
+
+        #summarise_data.summarise_all()
 
         print("    CHECK PARAMETERS    (s to skip all, enter to continue, or type to change)")
         inp = input(f"    GENEPOINTER_DIR: {GENEPOINTER_DIR} -> ")
@@ -117,20 +121,24 @@ def main():
                     exit(0)
                 
         
+        REFSEQ_DIR = "/home/sass/Dev/PhenotypeSeeker/GenePointer/RefGenomes/EnteroFaecium"
 
-        analysis.find_genes_alignment(f"k-mers_and_coefficients_in_{ML_CLASSIFIER_DICT[ML_CLASSIFIER]}_model_{ANTIBIOTIC.capitalize()}.txt", SPECIES , ANTIBIOTIC, GFF, ref_genome_file = REFSEQ, reduce_genomes_to=10)
-        
+        analysis.find_genes_alignment(f"k-mers_and_coefficients_in_{ML_CLASSIFIER_DICT[ML_CLASSIFIER]}_model_{ANTIBIOTIC.capitalize()}.txt", SPECIES , ANTIBIOTIC, ref_genome_dir = REFSEQ_DIR, reduce_genomes_to=10)
+            
         print("    Time taken for k-mer alignment-based marker search: ", round((time.time()-start), 6), " s")
 
         print("")
+
+        
+
         summarise_data.summarise_all()
 
 
         try:
             call(["mkdir Results"], shell=True)
             #call(["mv k-mers_and_coefficients_in_" + ML_CLASSIFIER_DICT[ML_CLASSIFIER] + "_model_" + ANTIBIOTIC.capitalize() + ".txt Results/"], shell=True)
-            call(["mv Aligned_kmer_results.csv Results/"], shell=True)
-            call(["mv Un_aligned_kmer_results.csv Results/"], shell=True)
+            # call(["mv Aligned_kmer_results.csv Results/"], shell=True)
+            # call(["mv Un_aligned_kmer_results.csv Results/"], shell=True)
             call(["mv Summary_aligned_kmers.csv Results/"], shell=True)
             call(["mv Summary_unaligned_kmers.csv Results/"], shell=True)
             call(["cp kmers_genomes_sequences_table.csv Results/"], shell=True)
