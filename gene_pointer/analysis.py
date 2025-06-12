@@ -309,6 +309,8 @@ def find_in_AnnotationFile(location, chromosome_id ,AnnotationFile, padding:int 
             end = int(row["End"].strip())
             next_start = int(nextLine["Begin"].strip())
             middle_of_align = int(location) + padding + round(kmer_length/2)
+
+            print(start," ", middle_of_align, " " ,end)
             if middle_of_align >= start and middle_of_align <= end:
                 # Create a formatted string with the desired fields
                 line = f"GeneType:{row['Gene Type']}, GenomeID:{row['Accession'].strip()}, Gene start:{start}, K-mer location:{location}, Gene end:{end}," + "Annotation:{" + f"Name:{row['Name'].strip()}, Symbol:{row['Symbol'].strip()}, ChromosomeID:{row['Chromosome'].strip()}, ProteinAccession:{row['Protein accession'].strip()}" + "}|"

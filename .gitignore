@@ -6,3 +6,4 @@ Analysis
 MyEnv
 .venv
 .egg*
+find_genes.py
